@@ -1,10 +1,10 @@
 use std::time::Duration;
 
-use anyhow::Error;
+use anyhow::{anyhow, Error};
 use chrono::Local;
 use itertools::Itertools;
 use poise::serenity_prelude as serenity;
-use serenity::futures::StreamExt;
+use serenity::{futures::StreamExt, Mentionable};
 
 use crate::{load, save, Context};
 
@@ -77,6 +77,33 @@ pub async fn listen_panel_interactions(
     Ok(())
 }
 
+async fn log(
+    ctx: &serenity::Context,
+    user: &serenity::User,
+    message: impl Into<String>,
+) -> Result<(), Error> {
+    let log_channel = load()?.log_channel.lock().unwrap().clone();
+
+    log_channel
+        .ok_or(anyhow!("log channel not set"))?
+        .send_message(
+            &ctx,
+            serenity::CreateMessage::default().embed(
+                serenity::CreateEmbed::default()
+                    .thumbnail(user.avatar_url().unwrap_or_default())
+                    .author(
+                        serenity::CreateEmbedAuthor::new(user.name.clone())
+                            .icon_url(user.avatar_url().unwrap_or_default()),
+                    )
+                    .title("パネル操作")
+                    .timestamp(Local::now())
+                    .description(message),
+            ),
+        )
+        .await?;
+    Ok(())
+}
+
 async fn show_tasks(
     interaction: serenity::ComponentInteraction,
     ctx: serenity::Context,
@@ -123,6 +150,16 @@ async fn show_tasks(
             serenity::CreateInteractionResponse::Message(message(page)?),
         )
         .await?;
+
+    log(
+        &ctx,
+        &interaction.user,
+        format!(
+            "{}さんがタスク一覧を確認しました",
+            interaction.user.mention()
+        ),
+    )
+    .await?;
 
     let mut interaction_stream = interaction
         .get_response(&ctx)
@@ -203,6 +240,16 @@ async fn show_archived_tasks(
             serenity::CreateInteractionResponse::Message(message(page)?),
         )
         .await?;
+
+    log(
+        &ctx,
+        &interaction.user,
+        format!(
+            "{}さんが過去のタスク一覧を確認しました",
+            interaction.user.mention()
+        ),
+    )
+    .await?;
 
     let mut interaction_stream = interaction
         .get_response(&ctx)
