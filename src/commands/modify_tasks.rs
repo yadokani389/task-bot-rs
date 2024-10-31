@@ -593,8 +593,9 @@ pub async fn remove_task(ctx: Context<'_>) -> Result<(), Error> {
 }
 
 #[poise::command(slash_command)]
-/// タスクを編集します。
-pub async fn edit_task(_ctx: Context<'_>) -> Result<(), Error> {
-    // TODO
+/// タスクを編集します。(未実装です)
+pub async fn edit_task(ctx: Context<'_>) -> Result<(), Error> {
+    ctx.reply("未実装です！代わりに、/remove_taskで削除してから/add_taskで再追加してください。")
+        .await?;
     Ok(())
 }
