@@ -52,7 +52,7 @@ pub async fn add_subjects(
 pub async fn remove_subject(ctx: Context<'_>) -> Result<(), Error> {
     const REMOVE_SUBJECT: &str = "remove_subject";
     const REMOVE_SUBJECT_CONFIRM: &str = "remove_subject_confirm";
-    
+
     let subjects = ctx.data().subjects.lock().unwrap().clone();
     let subject_options = serenity::CreateSelectMenuKind::String {
         options: subjects
@@ -112,7 +112,11 @@ pub async fn remove_subject(ctx: Context<'_>) -> Result<(), Error> {
                         .join("\n")
                 );
 
-                ctx.data().subjects.lock().unwrap().retain(|s| s != &subject);
+                ctx.data()
+                    .subjects
+                    .lock()
+                    .unwrap()
+                    .retain(|s| s != &subject);
                 save(ctx.data())?;
 
                 let response = serenity::CreateInteractionResponse::UpdateMessage(
