@@ -10,9 +10,16 @@ use crate::load;
 pub async fn run_daily_job(ctx: serenity::Context) {
     loop {
         let now = Local::now();
-        let target_time = (Local::now() + Duration::days(1))
-            .with_time(NaiveTime::from_hms_opt(12, 0, 0).unwrap())
-            .unwrap();
+        let target_time = {
+            let time = Local::now()
+                .with_time(NaiveTime::from_hms_opt(12, 0, 0).unwrap())
+                .unwrap();
+            if time < now {
+                time + Duration::days(1)
+            } else {
+                time
+            }
+        };
         let sleep_duration = Duration::seconds(target_time.timestamp() - now.timestamp());
 
         println!("Now: {}", now);
