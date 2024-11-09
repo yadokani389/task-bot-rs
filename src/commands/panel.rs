@@ -97,7 +97,8 @@ async fn log(
                     )
                     .title("パネル操作")
                     .timestamp(Local::now())
-                    .description(message),
+                    .description(message)
+                    .color(serenity::Color::DARK_BLUE),
             ),
         )
         .await?;
