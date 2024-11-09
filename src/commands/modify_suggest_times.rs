@@ -59,7 +59,7 @@ pub async fn add_suggest_time(
         .into_message()
         .await?
         .await_component_interaction(ctx)
-        .timeout(Duration::from_secs(60))
+        .timeout(Duration::from_secs(60 * 30))
         .stream();
 
     let mut time = NaiveTime::from_hms_opt(0, 0, 0).unwrap();
@@ -170,7 +170,7 @@ pub async fn remove_suggest_time(ctx: Context<'_>) -> Result<(), Error> {
         .into_message()
         .await?
         .await_component_interaction(ctx)
-        .timeout(Duration::from_secs(60))
+        .timeout(Duration::from_secs(60 * 30))
         .stream();
 
     let mut label = None;

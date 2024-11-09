@@ -166,7 +166,7 @@ async fn show_tasks(
         .get_response(&ctx)
         .await?
         .await_component_interaction(&ctx)
-        .timeout(Duration::from_secs(60))
+        .timeout(Duration::from_secs(60 * 30))
         .stream();
 
     while let Some(interaction) = interaction_stream.next().await {
@@ -256,7 +256,7 @@ async fn show_archived_tasks(
         .get_response(&ctx)
         .await?
         .await_component_interaction(&ctx)
-        .timeout(Duration::from_secs(60))
+        .timeout(Duration::from_secs(60 * 30))
         .stream();
 
     while let Some(interaction) = interaction_stream.next().await {

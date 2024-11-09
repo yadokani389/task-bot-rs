@@ -61,7 +61,7 @@ pub async fn set_ping_role(ctx: Context<'_>) -> Result<(), Error> {
         .into_message()
         .await?
         .await_component_interaction(ctx)
-        .timeout(Duration::from_secs(60))
+        .timeout(Duration::from_secs(60 * 30))
         .stream();
 
     let mut select = None;

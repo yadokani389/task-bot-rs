@@ -97,7 +97,7 @@ pub async fn add_task(ctx: ApplicationContext<'_>) -> Result<(), Error> {
         .into_message()
         .await?
         .await_component_interaction(ctx)
-        .timeout(Duration::seconds(60).to_std()?)
+        .timeout(Duration::seconds(60 * 30).to_std()?)
         .stream();
 
     let mut category: Option<Category> = None;
@@ -518,7 +518,7 @@ pub async fn remove_task(ctx: Context<'_>) -> Result<(), Error> {
         .into_message()
         .await?
         .await_component_interaction(ctx)
-        .timeout(Duration::seconds(60).to_std()?)
+        .timeout(Duration::seconds(60 * 30).to_std()?)
         .stream();
 
     let mut task: Option<Task> = None;
