@@ -19,7 +19,8 @@ pub async fn set_ping_channel(ctx: Context<'_>) -> Result<(), Error> {
         poise::CreateReply::default().embed(
             serenity::CreateEmbed::default()
                 .title("通知チャンネルを設定しました")
-                .description(format!("{}", ctx.channel_id().mention())),
+                .description(format!("{}", ctx.channel_id().mention()))
+                .color(serenity::Color::DARK_BLUE),
         ),
     )
     .await?;
