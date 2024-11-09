@@ -418,6 +418,7 @@ pub async fn add_task(ctx: ApplicationContext<'_>) -> Result<(), Error> {
     #[derive(Modal)]
     #[name = "詳細入力"]
     struct DetailsModal {
+        #[name = "詳細を入力してください"]
         #[placeholder = "詳細"]
         details: String,
     }
