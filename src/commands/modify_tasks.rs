@@ -584,7 +584,7 @@ pub async fn remove_task(ctx: Context<'_>) -> Result<(), Error> {
                         serenity::CreateEmbed::default()
                             .title("削除しました")
                             .fields(vec![task.to_field()])
-                            .color(serenity::Color::DARK_GREEN),
+                            .color(serenity::Color::DARK_RED),
                     )
                     .components(vec![]),
             ),
