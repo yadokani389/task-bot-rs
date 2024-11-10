@@ -82,7 +82,7 @@ async fn log(
     user: &serenity::User,
     message: impl Into<String>,
 ) -> Result<(), Error> {
-    let log_channel = load()?.log_channel.lock().unwrap().clone();
+    let log_channel = *load()?.log_channel.lock().unwrap();
 
     log_channel
         .ok_or(anyhow!("log channel not set"))?
