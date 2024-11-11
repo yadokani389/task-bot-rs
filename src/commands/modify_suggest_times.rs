@@ -38,7 +38,7 @@ pub async fn add_suggest_time(
             poise::CreateReply::default()
                 .embed(
                     serenity::CreateEmbed::default()
-                        .title("よく使う時間を追加")
+                        .title(format!("よく使う時間({})を追加", label))
                         .color(serenity::Color::DARK_BLUE),
                 )
                 .components(vec![
@@ -89,7 +89,7 @@ pub async fn add_suggest_time(
                         .suggest_times
                         .lock()
                         .unwrap()
-                        .insert(label.clone(), time);
+                        .insert(time, label.clone());
                     save(ctx.data())?;
 
                     let title = format!("{}({})を追加しました", label, time.format("%H:%M"));
@@ -100,11 +100,11 @@ pub async fn add_suggest_time(
                             .lock()
                             .unwrap()
                             .iter()
-                            .map(|(k, v)| format!(
+                            .map(|(t, l)| format!(
                                 "{}{}: {}",
-                                if k == &label { "+ " } else { "" },
-                                k,
-                                v.format("%H:%M")
+                                if l == &label { "+ " } else { "" },
+                                l,
+                                t.format("%H:%M")
                             ))
                             .collect::<Vec<String>>()
                             .join("\n")
@@ -141,8 +141,13 @@ pub async fn remove_suggest_time(ctx: Context<'_>) -> Result<(), Error> {
 
     let suggest_time_options = serenity::CreateSelectMenuKind::String {
         options: suggest_times
-            .keys()
-            .map(|label| serenity::CreateSelectMenuOption::new(label, label))
+            .iter()
+            .map(|(t, l)| {
+                serenity::CreateSelectMenuOption::new(
+                    format!("{} ({})", l, t.format("%H:%M")),
+                    serde_json::to_string(t).unwrap(),
+                )
+            })
             .collect(),
     };
 
@@ -174,13 +179,13 @@ pub async fn remove_suggest_time(ctx: Context<'_>) -> Result<(), Error> {
         .timeout(Duration::from_secs(60 * 30))
         .stream();
 
-    let mut label = None;
+    let mut time = None;
 
     while let Some(interaction) = interaction_stream.next().await {
         match &interaction.data.kind {
             serenity::ComponentInteractionDataKind::StringSelect { values } => {
                 if interaction.data.custom_id == LABEL {
-                    label = Some(values[0].clone());
+                    time = Some(serde_json::from_str(&values[0].clone())?);
                 }
                 interaction
                     .create_response(ctx, serenity::CreateInteractionResponse::Acknowledge)
@@ -188,11 +193,11 @@ pub async fn remove_suggest_time(ctx: Context<'_>) -> Result<(), Error> {
             }
             serenity::ComponentInteractionDataKind::Button => {
                 if interaction.data.custom_id == SUBMIT {
-                    if let Some(label) = label {
+                    if let Some(time) = time {
                         let title = format!(
                             "{}({})を削除しました",
-                            label,
-                            suggest_times[&label].format("%H:%M")
+                            suggest_times[&time],
+                            time.format("%H:%M"),
                         );
                         let diff = format!(
                             "```diff\n{}\n```",
@@ -201,11 +206,11 @@ pub async fn remove_suggest_time(ctx: Context<'_>) -> Result<(), Error> {
                                 .lock()
                                 .unwrap()
                                 .iter()
-                                .map(|(k, v)| format!(
+                                .map(|(t, l)| format!(
                                     "{}{}: {}",
-                                    if k == &label { "- " } else { "" },
-                                    k,
-                                    v.format("%H:%M")
+                                    if t == &time { "- " } else { "" },
+                                    l,
+                                    t.format("%H:%M")
                                 ))
                                 .collect::<Vec<String>>()
                                 .join("\n")
@@ -223,7 +228,7 @@ pub async fn remove_suggest_time(ctx: Context<'_>) -> Result<(), Error> {
                         );
 
                         interaction.create_response(ctx, response).await?;
-                        ctx.data().suggest_times.lock().unwrap().remove(&label);
+                        ctx.data().suggest_times.lock().unwrap().remove(&time);
                         save(ctx.data())?;
                     }
                     break;

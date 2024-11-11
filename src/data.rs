@@ -90,7 +90,7 @@ impl Task {
 pub struct Data {
     pub tasks: Mutex<Vec<Task>>,
     pub subjects: Mutex<BTreeSet<String>>,
-    pub suggest_times: Mutex<BTreeMap<String, NaiveTime>>,
+    pub suggest_times: Mutex<BTreeMap<NaiveTime, String>>,
     pub panel_message: Mutex<Option<serenity::Message>>,
     pub ping_channel: Mutex<Option<serenity::ChannelId>>,
     pub ping_role: Mutex<Option<serenity::RoleId>>,

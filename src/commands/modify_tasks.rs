@@ -3,6 +3,7 @@ use std::iter;
 use anyhow::{anyhow, Error};
 use chrono::{Datelike, Duration, NaiveTime};
 use chrono::{Local, NaiveDate, TimeZone};
+use itertools::Itertools;
 use poise::serenity_prelude as serenity;
 use poise::Modal;
 use serde::{Deserialize, Serialize};
@@ -56,10 +57,10 @@ pub async fn add_task(ctx: ApplicationContext<'_>) -> Result<(), Error> {
         options: [
             suggest_times
                 .iter()
-                .map(|(k, v)| {
+                .map(|(t, l)| {
                     serenity::CreateSelectMenuOption::new(
-                        format!("{} ({})", k, v.format("%H:%M")),
-                        serde_json::to_string(v).unwrap(),
+                        format!("{} ({})", l, t.format("%H:%M")),
+                        serde_json::to_string(t).unwrap(),
                     )
                 })
                 .collect::<Vec<_>>(),
@@ -480,6 +481,8 @@ pub async fn remove_task(ctx: Context<'_>) -> Result<(), Error> {
             .unwrap()
             .iter()
             .enumerate()
+            .sorted_by_key(|(_, task)| task.datetime)
+            .rev()
             .map(|(idx, task)| {
                 serenity::CreateSelectMenuOption::new(task.to_field().0, idx.to_string())
             })
