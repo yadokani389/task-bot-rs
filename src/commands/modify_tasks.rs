@@ -1,3 +1,5 @@
+use std::iter;
+
 use anyhow::{anyhow, Error};
 use chrono::{Datelike, Duration, NaiveTime};
 use chrono::{Local, NaiveDate, TimeZone};
@@ -55,7 +57,10 @@ pub async fn add_task(ctx: ApplicationContext<'_>) -> Result<(), Error> {
             suggest_times
                 .iter()
                 .map(|(k, v)| {
-                    serenity::CreateSelectMenuOption::new(k, serde_json::to_string(v).unwrap())
+                    serenity::CreateSelectMenuOption::new(
+                        format!("{} ({})", k, v.format("%H:%M")),
+                        serde_json::to_string(v).unwrap(),
+                    )
                 })
                 .collect::<Vec<_>>(),
             vec![serenity::CreateSelectMenuOption::new("その他", &others)],
@@ -340,6 +345,7 @@ pub async fn add_task(ctx: ApplicationContext<'_>) -> Result<(), Error> {
             let minute_options = serenity::CreateSelectMenuKind::String {
                 options: (0..60)
                     .step_by(5)
+                    .chain(iter::once(59))
                     .map(|i| serenity::CreateSelectMenuOption::new(i.to_string(), i.to_string()))
                     .collect(),
             };

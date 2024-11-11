@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{iter, time::Duration};
 
 use anyhow::{anyhow, Error};
 
@@ -26,6 +26,7 @@ pub async fn add_suggest_time(
     let minute_options = serenity::CreateSelectMenuKind::String {
         options: (0..60)
             .step_by(5)
+            .chain(iter::once(59))
             .map(|minute| {
                 serenity::CreateSelectMenuOption::new(minute.to_string(), minute.to_string())
             })
