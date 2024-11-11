@@ -99,16 +99,16 @@ pub struct Data {
     pub panel_listener: Mutex<Option<tokio::task::JoinHandle<Result<(), Error>>>>,
 }
 
-const CONFIG_FILE: &str = "config.json";
+const DATA_FILE: &str = "data.json";
 
 pub fn save(data: &Data) -> Result<(), Error> {
     let data = serde_json::to_string(data)?;
-    std::fs::write(CONFIG_FILE, data)?;
+    fs::write(DATA_FILE, data)?;
     Ok(())
 }
 
 pub fn load() -> Result<Data, Error> {
-    let data = fs::read_to_string(CONFIG_FILE)?;
+    let data = fs::read_to_string(DATA_FILE)?;
     let data = serde_json::from_str(&data)?;
     Ok(data)
 }

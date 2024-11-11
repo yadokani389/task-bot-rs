@@ -32,7 +32,7 @@ async fn event_handler(
                 println!("{:#?}", data);
             }
             Err(_) => {
-                println!("Note: config.json not found, using default data");
+                println!("Note: data.json not found, using default data");
                 save(data)?;
             }
         }
