@@ -499,9 +499,11 @@ pub async fn remove_task(ctx: Context<'_>) -> Result<(), Error> {
             serenity::CreateActionRow::Buttons(vec![
                 serenity::CreateButton::new(PREV)
                     .label("前のページ")
+                    .style(serenity::ButtonStyle::Secondary)
                     .disabled(page == 0),
                 serenity::CreateButton::new(NEXT)
                     .label("次のページ")
+                    .style(serenity::ButtonStyle::Secondary)
                     .disabled(options.len() <= 25),
             ]),
             serenity::CreateActionRow::Buttons(vec![serenity::CreateButton::new(SUBMIT)

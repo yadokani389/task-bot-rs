@@ -145,9 +145,11 @@ async fn show_tasks(
             .components(vec![serenity::CreateActionRow::Buttons(vec![
                 serenity::CreateButton::new(PREV)
                     .label("前のページ")
+                    .style(serenity::ButtonStyle::Secondary)
                     .disabled(page == 0),
                 serenity::CreateButton::new(NEXT)
                     .label("次のページ")
+                    .style(serenity::ButtonStyle::Secondary)
                     .disabled(fields.len() <= 5),
             ])])
             .ephemeral(true))
@@ -217,6 +219,7 @@ async fn show_archived_tasks(
             .iter()
             .filter(|e| Local::now() > e.datetime)
             .sorted_by_key(|e| e.datetime)
+            .rev()
             .map(|task| task.to_field())
             .skip(5 * page);
 
@@ -235,9 +238,11 @@ async fn show_archived_tasks(
             .components(vec![serenity::CreateActionRow::Buttons(vec![
                 serenity::CreateButton::new(PREV)
                     .label("前のページ")
+                    .style(serenity::ButtonStyle::Secondary)
                     .disabled(page == 0),
                 serenity::CreateButton::new(NEXT)
                     .label("次のページ")
+                    .style(serenity::ButtonStyle::Secondary)
                     .disabled(fields.len() <= 5),
             ])])
             .ephemeral(true))
