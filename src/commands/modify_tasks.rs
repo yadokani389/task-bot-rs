@@ -10,16 +10,130 @@ use serde::{Deserialize, Serialize};
 use serenity::futures::StreamExt;
 use uuid::Uuid;
 
-use crate::{save, ApplicationContext, Category, Context, Task};
+use crate::{save, Category, Context, Task};
 
 #[poise::command(slash_command)]
 /// タスクを追加します。
-pub async fn add_task(ctx: ApplicationContext<'_>) -> Result<(), Error> {
+pub async fn add_task(ctx: Context<'_>) -> Result<(), Error> {
+    let (mut message, task) = create_task(ctx, CreateLabel::Add, None, None).await?;
+
+    ctx.data().tasks.lock().unwrap().push(task.clone());
+    save(ctx.data())?;
+    message
+        .edit(
+            ctx,
+            serenity::EditMessage::default()
+                .embed(
+                    serenity::CreateEmbed::default()
+                        .title("タスクを追加しました")
+                        .fields(vec![task.to_field()])
+                        .color(serenity::Color::DARK_GREEN),
+                )
+                .components(vec![]),
+        )
+        .await?;
+    Ok(())
+}
+
+#[poise::command(slash_command)]
+/// タスクを削除します。
+pub async fn remove_task(ctx: Context<'_>) -> Result<(), Error> {
+    let (last_interaction, task) = select_task(ctx, SelectLabel::Remove).await?;
+
+    ctx.data().tasks.lock().unwrap().retain(|t| t != &task);
+    save(ctx.data())?;
+
+    last_interaction
+        .ok_or(anyhow!("No interaction"))?
+        .create_response(
+            ctx,
+            serenity::CreateInteractionResponse::UpdateMessage(
+                serenity::CreateInteractionResponseMessage::default()
+                    .embed(
+                        serenity::CreateEmbed::default()
+                            .title("削除しました")
+                            .fields(vec![task.to_field()])
+                            .color(serenity::Color::DARK_RED),
+                    )
+                    .components(vec![]),
+            ),
+        )
+        .await?;
+    Ok(())
+}
+
+#[poise::command(slash_command)]
+/// タスクを編集します。
+pub async fn edit_task(ctx: Context<'_>) -> Result<(), Error> {
+    let (last_interaction, task) = select_task(ctx, SelectLabel::Edit).await?;
+
+    let (mut message, modified_task) = create_task(
+        ctx,
+        CreateLabel::Edit,
+        Some(task.clone()),
+        Some(last_interaction.ok_or(anyhow!("No interaction"))?),
+    )
+    .await?;
+
+    {
+        let mut tasks = ctx.data().tasks.lock().unwrap();
+        let pos = tasks
+            .iter()
+            .position(|x| *x == task)
+            .ok_or(anyhow!("Task not found"))?;
+
+        tasks[pos] = modified_task.clone();
+    }
+    save(ctx.data())?;
+
+    message
+        .edit(
+            ctx,
+            serenity::EditMessage::default()
+                .embed(
+                    serenity::CreateEmbed::default()
+                        .title("タスクを編集しました")
+                        .fields(vec![
+                            task.to_field(),
+                            ("↓".into(), "".into(), false),
+                            modified_task.to_field(),
+                        ])
+                        .color(serenity::Color::DARK_GREEN),
+                )
+                .components(vec![]),
+        )
+        .await?;
+    Ok(())
+}
+
+enum CreateLabel {
+    Add,
+    Edit,
+}
+
+impl From<CreateLabel> for String {
+    fn from(label: CreateLabel) -> Self {
+        match label {
+            CreateLabel::Add => "追加",
+            CreateLabel::Edit => "編集",
+        }
+        .to_string()
+    }
+}
+
+async fn create_task(
+    ctx: Context<'_>,
+    label: CreateLabel,
+    defaults: Option<Task>,
+    interaction: Option<serenity::ComponentInteraction>,
+) -> Result<(serenity::Message, Task), Error> {
     const CATEGORY: &str = "category";
     const SUBJECT: &str = "subject";
     const DATE: &str = "date";
     const TIME: &str = "time";
     const SUBMIT: &str = "submit";
+
+    let label = &String::from(label);
 
     let others = Uuid::new_v4().to_string();
 
@@ -29,13 +143,19 @@ pub async fn add_task(ctx: ApplicationContext<'_>) -> Result<(), Error> {
     let category_options = serenity::CreateSelectMenuKind::String {
         options: Category::VALUES
             .iter()
-            .map(|&c| serenity::CreateSelectMenuOption::new(c, c))
+            .map(|&c| {
+                serenity::CreateSelectMenuOption::new(c, c)
+                    .default_selection(defaults.clone().map_or(false, |x| x.category == c))
+            })
             .collect(),
     };
     let subject_options = serenity::CreateSelectMenuKind::String {
         options: subjects
             .iter()
-            .map(|s| serenity::CreateSelectMenuOption::new(s, s))
+            .map(|s| {
+                serenity::CreateSelectMenuOption::new(s, s)
+                    .default_selection(defaults.clone().map_or(false, |x| x.subject == *s))
+            })
             .collect(),
     };
     let date_options = serenity::CreateSelectMenuKind::String {
@@ -69,47 +189,70 @@ pub async fn add_task(ctx: ApplicationContext<'_>) -> Result<(), Error> {
         .concat(),
     };
 
-    let message = ctx
-        .send(
-            poise::CreateReply::default()
-                .embed(
-                    serenity::CreateEmbed::default()
-                        .title("タスクを追加します")
-                        .color(serenity::Color::DARK_BLUE),
+    let message = {
+        let embed = serenity::CreateEmbed::default()
+            .title(format!("タスクを{label}します"))
+            .color(serenity::Color::DARK_BLUE);
+        let components = vec![
+            serenity::CreateActionRow::SelectMenu(
+                serenity::CreateSelectMenu::new(CATEGORY, category_options)
+                    .placeholder("カテゴリー"),
+            ),
+            serenity::CreateActionRow::SelectMenu(
+                serenity::CreateSelectMenu::new(SUBJECT, subject_options).placeholder("教科"),
+            ),
+            serenity::CreateActionRow::SelectMenu(
+                serenity::CreateSelectMenu::new(DATE, date_options).placeholder(
+                    defaults.clone().map_or("日付".into(), |x| {
+                        x.datetime.format("%Y/%m/%d (%a)").to_string()
+                    }),
+                ),
+            ),
+            serenity::CreateActionRow::SelectMenu(
+                serenity::CreateSelectMenu::new(TIME, time_options).placeholder(
+                    defaults
+                        .clone()
+                        .map_or("時間".into(), |x| x.datetime.format("%H:%M").to_string()),
+                ),
+            ),
+            serenity::CreateActionRow::Buttons(vec![serenity::CreateButton::new(SUBMIT)
+                .style(serenity::ButtonStyle::Primary)
+                .label(label)]),
+        ];
+        if let Some(interaction) = interaction {
+            interaction
+                .create_response(
+                    ctx,
+                    serenity::CreateInteractionResponse::UpdateMessage(
+                        serenity::CreateInteractionResponseMessage::default()
+                            .embed(embed)
+                            .components(components),
+                    ),
                 )
-                .components(vec![
-                    serenity::CreateActionRow::SelectMenu(
-                        serenity::CreateSelectMenu::new(CATEGORY, category_options)
-                            .placeholder("カテゴリー"),
-                    ),
-                    serenity::CreateActionRow::SelectMenu(
-                        serenity::CreateSelectMenu::new(SUBJECT, subject_options)
-                            .placeholder("教科"),
-                    ),
-                    serenity::CreateActionRow::SelectMenu(
-                        serenity::CreateSelectMenu::new(DATE, date_options).placeholder("日付"),
-                    ),
-                    serenity::CreateActionRow::SelectMenu(
-                        serenity::CreateSelectMenu::new(TIME, time_options).placeholder("時刻"),
-                    ),
-                    serenity::CreateActionRow::Buttons(vec![serenity::CreateButton::new(SUBMIT)
-                        .style(serenity::ButtonStyle::Primary)
-                        .label("追加")]),
-                ]),
-        )
-        .await?;
+                .await?;
+            interaction.get_response(ctx).await?
+        } else {
+            ctx.send(
+                poise::CreateReply::default()
+                    .embed(embed)
+                    .components(components),
+            )
+            .await?
+            .into_message()
+            .await?
+        }
+    };
+
     let mut interaction_stream = message
         .clone()
-        .into_message()
-        .await?
         .await_component_interaction(ctx)
         .timeout(Duration::seconds(60 * 30).to_std()?)
         .stream();
 
-    let mut category: Option<Category> = None;
-    let mut subject: Option<String> = None;
-    let mut date: Option<NaiveDate> = None;
-    let mut time: Option<NaiveTime> = None;
+    let mut category: Option<Category> = defaults.clone().map(|x| x.category);
+    let mut subject: Option<String> = defaults.clone().map(|x| x.subject);
+    let mut date: Option<NaiveDate> = defaults.clone().map(|x| x.datetime.date_naive());
+    let mut time: Option<NaiveTime> = defaults.clone().map(|x| x.datetime.time());
 
     let mut last_interaction = None;
     while let Some(interaction) = interaction_stream.next().await {
@@ -244,7 +387,7 @@ pub async fn add_task(ctx: ApplicationContext<'_>) -> Result<(), Error> {
                     ),
                     serenity::CreateActionRow::Buttons(vec![serenity::CreateButton::new(SUBMIT)
                         .style(serenity::ButtonStyle::Primary)
-                        .label("追加")]),
+                        .label(label)]),
                 ])
             };
 
@@ -361,7 +504,7 @@ pub async fn add_task(ctx: ApplicationContext<'_>) -> Result<(), Error> {
                     ),
                     serenity::CreateActionRow::Buttons(vec![serenity::CreateButton::new(SUBMIT)
                         .style(serenity::ButtonStyle::Primary)
-                        .label("追加")]),
+                        .label(label)]),
                 ]),
             );
             last_interaction
@@ -433,7 +576,7 @@ pub async fn add_task(ctx: ApplicationContext<'_>) -> Result<(), Error> {
     let DetailsModal { details } = poise::execute_modal_on_component_interaction::<DetailsModal>(
         ctx,
         last_interaction.ok_or(anyhow!("No interaction"))?,
-        None,
+        defaults.clone().map(|x| DetailsModal { details: x.details }),
         None,
     )
     .await?
@@ -446,31 +589,34 @@ pub async fn add_task(ctx: ApplicationContext<'_>) -> Result<(), Error> {
         datetime,
     };
 
-    ctx.data().tasks.lock().unwrap().push(task.clone());
-    save(ctx.data())?;
-    message
-        .edit(
-            poise::Context::Application(ctx),
-            poise::CreateReply::default()
-                .embed(
-                    serenity::CreateEmbed::default()
-                        .title("タスクを追加しました")
-                        .fields(vec![task.to_field()])
-                        .color(serenity::Color::DARK_GREEN),
-                )
-                .components(vec![]),
-        )
-        .await?;
-    Ok(())
+    Ok((message, task))
 }
 
-#[poise::command(slash_command)]
-/// タスクを削除します。
-pub async fn remove_task(ctx: Context<'_>) -> Result<(), Error> {
+enum SelectLabel {
+    Remove,
+    Edit,
+}
+
+impl From<SelectLabel> for String {
+    fn from(label: SelectLabel) -> Self {
+        match label {
+            SelectLabel::Remove => "削除",
+            SelectLabel::Edit => "編集",
+        }
+        .to_string()
+    }
+}
+
+async fn select_task(
+    ctx: Context<'_>,
+    label: SelectLabel,
+) -> Result<(Option<serenity::ComponentInteraction>, Task), Error> {
     const TASK: &str = "task";
     const SUBMIT: &str = "submit";
     const PREV: &str = "prev";
     const NEXT: &str = "next";
+
+    let label = &String::from(label);
 
     let mut page = 0;
     let components = |page: usize| {
@@ -507,8 +653,8 @@ pub async fn remove_task(ctx: Context<'_>) -> Result<(), Error> {
                     .disabled(options.len() <= 25),
             ]),
             serenity::CreateActionRow::Buttons(vec![serenity::CreateButton::new(SUBMIT)
-                .style(serenity::ButtonStyle::Danger)
-                .label("削除")]),
+                .style(serenity::ButtonStyle::Primary)
+                .label(label)]),
         ]
     };
 
@@ -517,7 +663,7 @@ pub async fn remove_task(ctx: Context<'_>) -> Result<(), Error> {
             poise::CreateReply::default()
                 .embed(
                     serenity::CreateEmbed::default()
-                        .title("削除するタスクを選択")
+                        .title(format!("{label}するタスクを選択"))
                         .color(serenity::Color::DARK_BLUE),
                 )
                 .components(components(page)),
@@ -580,34 +726,5 @@ pub async fn remove_task(ctx: Context<'_>) -> Result<(), Error> {
         }
     }
 
-    let task = task.ok_or(anyhow!("Task not selected"))?;
-
-    ctx.data().tasks.lock().unwrap().retain(|t| t != &task);
-    save(ctx.data())?;
-
-    last_interaction
-        .ok_or(anyhow!("No interaction"))?
-        .create_response(
-            ctx,
-            serenity::CreateInteractionResponse::UpdateMessage(
-                serenity::CreateInteractionResponseMessage::default()
-                    .embed(
-                        serenity::CreateEmbed::default()
-                            .title("削除しました")
-                            .fields(vec![task.to_field()])
-                            .color(serenity::Color::DARK_RED),
-                    )
-                    .components(vec![]),
-            ),
-        )
-        .await?;
-    Ok(())
-}
-
-#[poise::command(slash_command)]
-/// タスクを編集します。(未実装です)
-pub async fn edit_task(ctx: Context<'_>) -> Result<(), Error> {
-    ctx.reply("未実装です！代わりに、/remove_taskで削除してから/add_taskで再追加してください。")
-        .await?;
-    Ok(())
+    Ok((last_interaction, task.ok_or(anyhow!("Task not selected"))?))
 }
