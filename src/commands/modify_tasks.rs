@@ -576,7 +576,9 @@ async fn create_task(
     let DetailsModal { details } = poise::execute_modal_on_component_interaction::<DetailsModal>(
         ctx,
         last_interaction.ok_or(anyhow!("No interaction"))?,
-        defaults.clone().map(|x| DetailsModal { details: x.details }),
+        defaults
+            .clone()
+            .map(|x| DetailsModal { details: x.details }),
         None,
     )
     .await?

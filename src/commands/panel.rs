@@ -56,11 +56,13 @@ pub async fn deploy_panel(ctx: Context<'_>) -> Result<(), Error> {
             message,
         )));
     ctx.send(
-        poise::CreateReply::default().embed(
-            serenity::CreateEmbed::default()
-                .title("パネルをデプロイしました")
-                .color(serenity::Color::DARK_GREEN),
-        ).ephemeral(true),
+        poise::CreateReply::default()
+            .embed(
+                serenity::CreateEmbed::default()
+                    .title("パネルをデプロイしました")
+                    .color(serenity::Color::DARK_GREEN),
+            )
+            .ephemeral(true),
     )
     .await?;
     Ok(())
