@@ -40,7 +40,14 @@ pub async fn add_task(ctx: Context<'_>) -> Result<(), Error> {
 pub async fn remove_task(ctx: Context<'_>) -> Result<(), Error> {
     let (last_interaction, task) = select_task(ctx, SelectLabel::Remove).await?;
 
-    ctx.data().tasks.lock().unwrap().retain(|t| t != &task);
+    {
+        let mut tasks = ctx.data().tasks.lock().unwrap();
+        let pos = tasks
+            .iter()
+            .position(|x| *x == task)
+            .ok_or(anyhow!("Task not found"))?;
+        tasks.remove(pos);
+    }
     save(ctx.data())?;
 
     last_interaction
