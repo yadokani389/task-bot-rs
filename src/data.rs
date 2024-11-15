@@ -99,7 +99,7 @@ pub struct Data {
     pub panel_listener: Mutex<Option<tokio::task::JoinHandle<Result<(), Error>>>>,
 }
 
-const DATA_FILE: &str = "data.json";
+pub const DATA_FILE: &str = "data.json";
 
 pub fn save(data: &Data) -> Result<(), Error> {
     let data = serde_json::to_string(data)?;

@@ -31,7 +31,7 @@ async fn event_handler(
                 println!("{:#?}", data);
             }
             Err(_) => {
-                println!("Note: data.json not found, using default data");
+                println!("Note: {} not found, using default data", DATA_FILE);
                 save(data)?;
             }
         }
