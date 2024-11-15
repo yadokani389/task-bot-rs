@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use anyhow::{anyhow, Error};
+use anyhow::{Context as _, Error};
 use poise::serenity_prelude as serenity;
 use serenity::futures::StreamExt;
 
@@ -99,7 +99,7 @@ pub async fn remove_subject(ctx: Context<'_>) -> Result<(), Error> {
                     .await?;
             }
             serenity::ComponentInteractionDataKind::Button => {
-                let subject = select.ok_or(anyhow!("Subject not selected"))?;
+                let subject = select.context("Subject not selected")?;
                 let diff = format!(
                     "```diff\n{}\n```",
                     ctx.data()

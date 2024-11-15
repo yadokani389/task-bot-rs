@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use anyhow::{anyhow, Error};
+use anyhow::{Context as _, Error};
 use poise::serenity_prelude as serenity;
 use serenity::{futures::StreamExt, Mentionable};
 
@@ -85,10 +85,10 @@ pub async fn set_ping_role(ctx: Context<'_>) -> Result<(), Error> {
         .ping_role
         .lock()
         .unwrap()
-        .replace(select.ok_or(anyhow!("No role selected"))?);
+        .replace(select.context("No role selected")?);
     save(ctx.data())?;
     last_interaction
-        .ok_or(anyhow!("No interaction"))?
+        .context("No interaction")?
         .create_response(
             &ctx,
             serenity::CreateInteractionResponse::UpdateMessage(

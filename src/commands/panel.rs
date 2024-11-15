@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use anyhow::{anyhow, Error};
+use anyhow::{Context as _, Error};
 use chrono::Local;
 use itertools::Itertools;
 use poise::serenity_prelude as serenity;
@@ -74,7 +74,7 @@ pub async fn listen_panel_interactions(
 ) -> Result<(), Error> {
     let mut interaction_stream = msg.await_component_interaction(&ctx).stream();
     while let Some(interaction) = interaction_stream.next().await {
-        match &interaction.data.custom_id[..] {
+        match interaction.data.custom_id.as_str() {
             SHOW_TASKS => {
                 tokio::spawn(show_tasks(interaction.clone(), ctx.clone()));
             }
@@ -95,7 +95,7 @@ async fn log(
     let log_channel = *load()?.log_channel.lock().unwrap();
 
     log_channel
-        .ok_or(anyhow!("log channel not set"))?
+        .context("log channel not set")?
         .send_message(
             &ctx,
             serenity::CreateMessage::default().embed(
@@ -182,7 +182,7 @@ async fn show_tasks(
         .stream();
 
     while let Some(interaction) = interaction_stream.next().await {
-        match &interaction.data.custom_id[..] {
+        match interaction.data.custom_id.as_str() {
             PREV => {
                 page = page.saturating_sub(1);
                 interaction
@@ -275,7 +275,7 @@ async fn show_archived_tasks(
         .stream();
 
     while let Some(interaction) = interaction_stream.next().await {
-        match &interaction.data.custom_id[..] {
+        match interaction.data.custom_id.as_str() {
             PREV => {
                 page = page.saturating_sub(1);
                 interaction

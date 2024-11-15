@@ -1,6 +1,6 @@
 use std::{iter, time::Duration};
 
-use anyhow::{anyhow, Error};
+use anyhow::{Context as _, Error};
 
 use chrono::{NaiveTime, Timelike};
 use poise::serenity_prelude as serenity;
@@ -68,14 +68,14 @@ pub async fn add_suggest_time(
     while let Some(interaction) = interaction_stream.next().await {
         match &interaction.data.kind {
             serenity::ComponentInteractionDataKind::StringSelect { values } => {
-                match &interaction.data.custom_id[..] {
+                match interaction.data.custom_id.as_str() {
                     HOUR => {
                         let hour = values[0].parse::<u32>()?;
-                        time = time.with_hour(hour).ok_or(anyhow!("Invalid hour"))?;
+                        time = time.with_hour(hour).context("Invalid hour")?;
                     }
                     MINUTE => {
                         let minute = values[0].parse::<u32>()?;
-                        time = time.with_minute(minute).ok_or(anyhow!("Invalid minute"))?;
+                        time = time.with_minute(minute).context("Invalid minute")?;
                     }
                     _ => {}
                 }

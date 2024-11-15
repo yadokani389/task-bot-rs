@@ -1,6 +1,6 @@
 use std::iter;
 
-use anyhow::{anyhow, Error};
+use anyhow::{Context as _, Error};
 use chrono::{Datelike, Duration, NaiveTime};
 use chrono::{Local, NaiveDate, TimeZone};
 use itertools::Itertools;
@@ -45,13 +45,13 @@ pub async fn remove_task(ctx: Context<'_>) -> Result<(), Error> {
         let pos = tasks
             .iter()
             .position(|x| *x == task)
-            .ok_or(anyhow!("Task not found"))?;
+            .context("Task not found")?;
         tasks.remove(pos);
     }
     save(ctx.data())?;
 
     last_interaction
-        .ok_or(anyhow!("No interaction"))?
+        .context("No interaction")?
         .create_response(
             ctx,
             serenity::CreateInteractionResponse::UpdateMessage(
@@ -78,7 +78,7 @@ pub async fn edit_task(ctx: Context<'_>) -> Result<(), Error> {
         ctx,
         CreateLabel::Edit,
         Some(task.clone()),
-        Some(last_interaction.ok_or(anyhow!("No interaction"))?),
+        Some(last_interaction.context("No interaction")?),
     )
     .await?;
 
@@ -87,7 +87,7 @@ pub async fn edit_task(ctx: Context<'_>) -> Result<(), Error> {
         let pos = tasks
             .iter()
             .position(|x| *x == task)
-            .ok_or(anyhow!("Task not found"))?;
+            .context("Task not found")?;
 
         tasks[pos] = modified_task.clone();
     }
@@ -265,7 +265,7 @@ async fn create_task(
     while let Some(interaction) = interaction_stream.next().await {
         match &interaction.data.kind {
             serenity::ComponentInteractionDataKind::StringSelect { values } => {
-                match &interaction.data.custom_id[..] {
+                match interaction.data.custom_id.as_str() {
                     CATEGORY => {
                         category.replace(values[0].clone().into());
                     }
@@ -302,8 +302,8 @@ async fn create_task(
         }
     }
 
-    let category = category.ok_or(anyhow!("Category not selected"))?;
-    let subject = subject.ok_or(anyhow!("Subject not selected"))?;
+    let category = category.context("Category not selected")?;
+    let subject = subject.context("Subject not selected")?;
 
     const YEAR: &str = "year";
     const MONTH: &str = "month";
@@ -403,7 +403,7 @@ async fn create_task(
             );
             last_interaction
                 .clone()
-                .ok_or(anyhow!("No interaction"))?
+                .context("No interaction")?
                 .create_response(ctx, response)
                 .await?;
 
@@ -413,9 +413,9 @@ async fn create_task(
                 let next_year = if month == 12 { year + 1 } else { year };
 
                 let last_day = NaiveDate::from_ymd_opt(next_year, next_month, 1)
-                    .ok_or(anyhow!("Invalid date"))?
+                    .context("Invalid date")?
                     .pred_opt()
-                    .ok_or(anyhow!("Invalid date"))?;
+                    .context("Invalid date")?;
 
                 Ok(last_day.day())
             }
@@ -423,11 +423,11 @@ async fn create_task(
             while let Some(interaction) = interaction_stream.next().await {
                 match &interaction.data.kind {
                     serenity::ComponentInteractionDataKind::StringSelect { values } => {
-                        match &interaction.data.custom_id[..] {
+                        match interaction.data.custom_id.as_str() {
                             YEAR => {
                                 date = date
                                     .with_year(values[0].parse().unwrap())
-                                    .ok_or(anyhow!("Invalid date"))?;
+                                    .context("Invalid date")?;
                                 interaction
                                     .create_response(
                                         ctx,
@@ -446,7 +446,7 @@ async fn create_task(
                                             16
                                         })
                                     })
-                                    .ok_or(anyhow!("Invalid date"))?;
+                                    .context("Invalid date")?;
 
                                 let response = serenity::CreateInteractionResponse::UpdateMessage(
                                     serenity::CreateInteractionResponseMessage::default()
@@ -457,7 +457,7 @@ async fn create_task(
                             DAY => {
                                 date = date
                                     .with_day(values[0].parse().unwrap())
-                                    .ok_or(anyhow!("Invalid date"))?;
+                                    .context("Invalid date")?;
                                 interaction
                                     .create_response(
                                         ctx,
@@ -516,7 +516,7 @@ async fn create_task(
             );
             last_interaction
                 .clone()
-                .ok_or(anyhow!("No interaction"))?
+                .context("No interaction")?
                 .create_response(ctx, response)
                 .await?;
 
@@ -526,7 +526,7 @@ async fn create_task(
             while let Some(interaction) = interaction_stream.next().await {
                 match &interaction.data.kind {
                     serenity::ComponentInteractionDataKind::StringSelect { values } => {
-                        match &interaction.data.custom_id[..] {
+                        match interaction.data.custom_id.as_str() {
                             HOUR => {
                                 hour.replace(values[0].parse().unwrap());
                                 interaction
@@ -559,18 +559,18 @@ async fn create_task(
             }
 
             NaiveTime::from_hms_opt(
-                hour.ok_or(anyhow!("Hour not selected"))?,
-                minute.ok_or(anyhow!("Minute not selected"))?,
+                hour.context("Hour not selected")?,
+                minute.context("Minute not selected")?,
                 0,
             )
-            .ok_or(anyhow!("Invalid datetime"))?
+            .context("Invalid datetime")?
         }
     };
 
     let datetime = Local
         .from_local_datetime(&date.and_time(time))
         .single()
-        .ok_or(anyhow!("Invalid datetime"))?;
+        .context("Invalid datetime")?;
 
     #[derive(Modal)]
     #[name = "詳細入力"]
@@ -582,14 +582,14 @@ async fn create_task(
 
     let DetailsModal { details } = poise::execute_modal_on_component_interaction::<DetailsModal>(
         ctx,
-        last_interaction.ok_or(anyhow!("No interaction"))?,
+        last_interaction.context("No interaction")?,
         defaults
             .clone()
             .map(|x| DetailsModal { details: x.details }),
         None,
     )
     .await?
-    .ok_or(anyhow!("No interaction"))?;
+    .context("No interaction")?;
 
     let task = Task {
         category,
@@ -700,40 +700,41 @@ async fn select_task(
                             .unwrap()
                             .get(values[0].parse::<usize>().unwrap())
                             .cloned()
-                            .ok_or(anyhow!("Invalid task"))?,
+                            .context("Invalid task")?,
                     );
                 }
                 interaction
                     .create_response(&ctx, serenity::CreateInteractionResponse::Acknowledge)
                     .await?;
             }
-            serenity::ComponentInteractionDataKind::Button => match &interaction.data.custom_id[..]
-            {
-                PREV => {
-                    page = page.saturating_sub(1);
-                    let response = serenity::CreateInteractionResponse::UpdateMessage(
-                        serenity::CreateInteractionResponseMessage::default()
-                            .components(components(page)),
-                    );
-                    interaction.create_response(ctx, response).await?;
+            serenity::ComponentInteractionDataKind::Button => {
+                match interaction.data.custom_id.as_str() {
+                    PREV => {
+                        page = page.saturating_sub(1);
+                        let response = serenity::CreateInteractionResponse::UpdateMessage(
+                            serenity::CreateInteractionResponseMessage::default()
+                                .components(components(page)),
+                        );
+                        interaction.create_response(ctx, response).await?;
+                    }
+                    NEXT => {
+                        page += 1;
+                        let response = serenity::CreateInteractionResponse::UpdateMessage(
+                            serenity::CreateInteractionResponseMessage::default()
+                                .components(components(page)),
+                        );
+                        interaction.create_response(ctx, response).await?;
+                    }
+                    SUBMIT => {
+                        last_interaction.replace(interaction);
+                        break;
+                    }
+                    _ => {}
                 }
-                NEXT => {
-                    page += 1;
-                    let response = serenity::CreateInteractionResponse::UpdateMessage(
-                        serenity::CreateInteractionResponseMessage::default()
-                            .components(components(page)),
-                    );
-                    interaction.create_response(ctx, response).await?;
-                }
-                SUBMIT => {
-                    last_interaction.replace(interaction);
-                    break;
-                }
-                _ => {}
-            },
+            }
             _ => {}
         }
     }
 
-    Ok((last_interaction, task.ok_or(anyhow!("Task not selected"))?))
+    Ok((last_interaction, task.context("Task not selected")?))
 }

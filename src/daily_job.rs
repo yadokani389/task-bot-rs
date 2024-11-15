@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Error, Ok};
+use anyhow::{Context as _, Error, Ok};
 use chrono::{Duration, Local, NaiveTime};
 use itertools::Itertools;
 use poise::serenity_prelude as serenity;
@@ -33,9 +33,8 @@ pub async fn run_daily_job(ctx: serenity::Context) {
 
 async fn job(ctx: serenity::Context) -> Result<(), Error> {
     let data = load()?;
-    let ping_channel =
-        (*data.ping_channel.lock().unwrap()).ok_or(anyhow!("Ping channel not set"))?;
-    let ping_role = (*data.ping_role.lock().unwrap()).ok_or(anyhow!("Ping role not set"))?;
+    let ping_channel = (*data.ping_channel.lock().unwrap()).context("Ping channel not set")?;
+    let ping_role = (*data.ping_role.lock().unwrap()).context("Ping role not set")?;
     let tasks = data.tasks.lock().unwrap().clone();
 
     println!(

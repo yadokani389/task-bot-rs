@@ -9,7 +9,6 @@ use commands::*;
 mod daily_job;
 
 pub type Context<'a> = poise::Context<'a, Data, Error>;
-pub type ApplicationContext<'a> = poise::ApplicationContext<'a, Data, Error>;
 
 async fn event_handler(
     ctx: &serenity::Context,
