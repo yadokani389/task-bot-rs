@@ -3,18 +3,18 @@ use std::iter;
 use anyhow::{Context as _, Error};
 use chrono::{Datelike, Duration, NaiveTime};
 use chrono::{Local, NaiveDate, TimeZone};
+use futures::StreamExt;
 use itertools::Itertools;
-use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::*;
 use poise::Modal;
 use serde::{Deserialize, Serialize};
-use serenity::futures::StreamExt;
 use uuid::Uuid;
 
-use crate::{save, Category, Context, Task};
+use crate::{save, Category, PoiseContext, Task};
 
 #[poise::command(slash_command)]
 /// タスクを追加します。
-pub async fn add_task(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn add_task(ctx: PoiseContext<'_>) -> Result<(), Error> {
     let (mut message, task) = create_task(ctx, CreateLabel::Add, None, None).await?;
 
     ctx.data().tasks.lock().unwrap().push(task.clone());
@@ -22,12 +22,12 @@ pub async fn add_task(ctx: Context<'_>) -> Result<(), Error> {
     message
         .edit(
             ctx,
-            serenity::EditMessage::default()
+            EditMessage::default()
                 .embed(
-                    serenity::CreateEmbed::default()
+                    CreateEmbed::default()
                         .title("タスクを追加しました")
                         .fields(vec![task.to_field()])
-                        .color(serenity::Color::DARK_GREEN),
+                        .color(Color::DARK_GREEN),
                 )
                 .components(vec![]),
         )
@@ -37,7 +37,7 @@ pub async fn add_task(ctx: Context<'_>) -> Result<(), Error> {
 
 #[poise::command(slash_command)]
 /// タスクを削除します。
-pub async fn remove_task(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn remove_task(ctx: PoiseContext<'_>) -> Result<(), Error> {
     let (last_interaction, task) = select_task(ctx, SelectLabel::Remove).await?;
 
     {
@@ -54,13 +54,13 @@ pub async fn remove_task(ctx: Context<'_>) -> Result<(), Error> {
         .context("No interaction")?
         .create_response(
             ctx,
-            serenity::CreateInteractionResponse::UpdateMessage(
-                serenity::CreateInteractionResponseMessage::default()
+            CreateInteractionResponse::UpdateMessage(
+                CreateInteractionResponseMessage::default()
                     .embed(
-                        serenity::CreateEmbed::default()
+                        CreateEmbed::default()
                             .title("削除しました")
                             .fields(vec![task.to_field()])
-                            .color(serenity::Color::DARK_RED),
+                            .color(Color::DARK_RED),
                     )
                     .components(vec![]),
             ),
@@ -71,7 +71,7 @@ pub async fn remove_task(ctx: Context<'_>) -> Result<(), Error> {
 
 #[poise::command(slash_command)]
 /// タスクを編集します。
-pub async fn edit_task(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn edit_task(ctx: PoiseContext<'_>) -> Result<(), Error> {
     let (last_interaction, task) = select_task(ctx, SelectLabel::Edit).await?;
 
     let (mut message, modified_task) = create_task(
@@ -96,16 +96,16 @@ pub async fn edit_task(ctx: Context<'_>) -> Result<(), Error> {
     message
         .edit(
             ctx,
-            serenity::EditMessage::default()
+            EditMessage::default()
                 .embed(
-                    serenity::CreateEmbed::default()
+                    CreateEmbed::default()
                         .title("タスクを編集しました")
                         .fields(vec![
                             task.to_field(),
                             ("↓".into(), "".into(), false),
                             modified_task.to_field(),
                         ])
-                        .color(serenity::Color::DARK_GREEN),
+                        .color(Color::DARK_GREEN),
                 )
                 .components(vec![]),
         )
@@ -130,11 +130,11 @@ impl From<CreateLabel> for String {
 }
 
 async fn create_task(
-    ctx: Context<'_>,
+    ctx: PoiseContext<'_>,
     label: CreateLabel,
     defaults: Option<Task>,
-    interaction: Option<serenity::ComponentInteraction>,
-) -> Result<(serenity::Message, Task), Error> {
+    interaction: Option<ComponentInteraction>,
+) -> Result<(Message, Task), Error> {
     const CATEGORY: &str = "category";
     const SUBJECT: &str = "subject";
     const DATE: &str = "date";
@@ -146,91 +146,88 @@ async fn create_task(
     let subjects = ctx.data().subjects.lock().unwrap().clone();
     let suggest_times = ctx.data().suggest_times.lock().unwrap().clone();
 
-    let category_options = serenity::CreateSelectMenuKind::String {
+    let category_options = CreateSelectMenuKind::String {
         options: Category::VALUES
             .iter()
             .map(|&c| {
-                serenity::CreateSelectMenuOption::new(c, c)
+                CreateSelectMenuOption::new(c, c)
                     .default_selection(defaults.clone().map_or(false, |x| x.category == c))
             })
             .collect(),
     };
-    let subject_options = serenity::CreateSelectMenuKind::String {
+    let subject_options = CreateSelectMenuKind::String {
         options: subjects
             .iter()
             .map(|s| {
-                serenity::CreateSelectMenuOption::new(s, s)
+                CreateSelectMenuOption::new(s, s)
                     .default_selection(defaults.clone().map_or(false, |x| x.subject == *s))
             })
             .collect(),
     };
-    let date_options = serenity::CreateSelectMenuKind::String {
+    let date_options = CreateSelectMenuKind::String {
         options: [
             (0..24)
                 .map(|i| {
                     let date = Local::now().date_naive() + Duration::days(i);
-                    serenity::CreateSelectMenuOption::new(
+                    CreateSelectMenuOption::new(
                         date.format("%Y/%m/%d (%a)").to_string(),
                         serde_json::to_string(&date).unwrap(),
                     )
                 })
                 .collect(),
-            vec![serenity::CreateSelectMenuOption::new("その他", &others)],
+            vec![CreateSelectMenuOption::new("その他", &others)],
         ]
         .concat(),
     };
-    let time_options = serenity::CreateSelectMenuKind::String {
+    let time_options = CreateSelectMenuKind::String {
         options: [
             suggest_times
                 .iter()
                 .map(|(t, l)| {
-                    serenity::CreateSelectMenuOption::new(
+                    CreateSelectMenuOption::new(
                         format!("{} ({})", l, t.format("%H:%M")),
                         serde_json::to_string(t).unwrap(),
                     )
                 })
                 .collect::<Vec<_>>(),
-            vec![serenity::CreateSelectMenuOption::new("その他", &others)],
+            vec![CreateSelectMenuOption::new("その他", &others)],
         ]
         .concat(),
     };
 
     let message = {
-        let embed = serenity::CreateEmbed::default()
+        let embed = CreateEmbed::default()
             .title(format!("タスクを{}します", String::from(label)))
-            .color(serenity::Color::DARK_BLUE);
+            .color(Color::DARK_BLUE);
         let components = vec![
-            serenity::CreateActionRow::SelectMenu(
-                serenity::CreateSelectMenu::new(CATEGORY, category_options)
-                    .placeholder("カテゴリー"),
+            CreateActionRow::SelectMenu(
+                CreateSelectMenu::new(CATEGORY, category_options).placeholder("カテゴリー"),
             ),
-            serenity::CreateActionRow::SelectMenu(
-                serenity::CreateSelectMenu::new(SUBJECT, subject_options).placeholder("教科"),
+            CreateActionRow::SelectMenu(
+                CreateSelectMenu::new(SUBJECT, subject_options).placeholder("教科"),
             ),
-            serenity::CreateActionRow::SelectMenu(
-                serenity::CreateSelectMenu::new(DATE, date_options).placeholder(
-                    defaults.clone().map_or("日付".into(), |x| {
-                        x.datetime.format("%Y/%m/%d (%a)").to_string()
-                    }),
-                ),
-            ),
-            serenity::CreateActionRow::SelectMenu(
-                serenity::CreateSelectMenu::new(TIME, time_options).placeholder(
+            CreateActionRow::SelectMenu(CreateSelectMenu::new(DATE, date_options).placeholder(
+                defaults.clone().map_or("日付".into(), |x| {
+                    x.datetime.format("%Y/%m/%d (%a)").to_string()
+                }),
+            )),
+            CreateActionRow::SelectMenu(
+                CreateSelectMenu::new(TIME, time_options).placeholder(
                     defaults
                         .clone()
                         .map_or("時間".into(), |x| x.datetime.format("%H:%M").to_string()),
                 ),
             ),
-            serenity::CreateActionRow::Buttons(vec![serenity::CreateButton::new(SUBMIT)
-                .style(serenity::ButtonStyle::Primary)
+            CreateActionRow::Buttons(vec![CreateButton::new(SUBMIT)
+                .style(ButtonStyle::Primary)
                 .label(label)]),
         ];
         if let Some(interaction) = interaction {
             interaction
                 .create_response(
                     ctx,
-                    serenity::CreateInteractionResponse::UpdateMessage(
-                        serenity::CreateInteractionResponseMessage::default()
+                    CreateInteractionResponse::UpdateMessage(
+                        CreateInteractionResponseMessage::default()
                             .embed(embed)
                             .components(components),
                     ),
@@ -263,7 +260,7 @@ async fn create_task(
     let mut last_interaction = None;
     while let Some(interaction) = interaction_stream.next().await {
         match &interaction.data.kind {
-            serenity::ComponentInteractionDataKind::StringSelect { values } => {
+            ComponentInteractionDataKind::StringSelect { values } => {
                 match interaction.data.custom_id.as_str() {
                     CATEGORY => {
                         category.replace(values[0].clone().into());
@@ -288,10 +285,10 @@ async fn create_task(
                     _ => {}
                 }
                 interaction
-                    .create_response(&ctx, serenity::CreateInteractionResponse::Acknowledge)
+                    .create_response(&ctx, CreateInteractionResponse::Acknowledge)
                     .await?;
             }
-            serenity::ComponentInteractionDataKind::Button => {
+            ComponentInteractionDataKind::Button => {
                 if interaction.data.custom_id == SUBMIT {
                     last_interaction.replace(interaction);
                     break;
@@ -337,15 +334,15 @@ async fn create_task(
                 let month = date.month();
                 let is_first_half = date.day() <= 15;
 
-                let year_options = serenity::CreateSelectMenuKind::String {
+                let year_options = CreateSelectMenuKind::String {
                     options: (Local::now().year()..=Local::now().year() + 2)
                         .map(|i| {
-                            serenity::CreateSelectMenuOption::new(i.to_string(), i.to_string())
+                            CreateSelectMenuOption::new(i.to_string(), i.to_string())
                                 .default_selection(i == date.year())
                         })
                         .collect(),
                 };
-                let month_options = serenity::CreateSelectMenuKind::String {
+                let month_options = CreateSelectMenuKind::String {
                     options: (1..=12)
                         .flat_map(|i| {
                             [
@@ -360,7 +357,7 @@ async fn create_task(
                             ]
                         })
                         .map(|e| {
-                            serenity::CreateSelectMenuOption::new(
+                            CreateSelectMenuOption::new(
                                 String::from(e),
                                 serde_json::to_string(&e).unwrap(),
                             )
@@ -368,37 +365,37 @@ async fn create_task(
                         })
                         .collect(),
                 };
-                let day_options = serenity::CreateSelectMenuKind::String {
+                let day_options = CreateSelectMenuKind::String {
                     options: if is_first_half {
                         1..=15
                     } else {
                         16..=days_in_month(date.year(), month)?
                     }
                     .map(|i| {
-                        serenity::CreateSelectMenuOption::new(i.to_string(), i.to_string())
+                        CreateSelectMenuOption::new(i.to_string(), i.to_string())
                             .default_selection(i == date.day())
                     })
                     .collect(),
                 };
 
                 Ok(vec![
-                    serenity::CreateActionRow::SelectMenu(
-                        serenity::CreateSelectMenu::new(YEAR, year_options).placeholder("年"),
+                    CreateActionRow::SelectMenu(
+                        CreateSelectMenu::new(YEAR, year_options).placeholder("年"),
                     ),
-                    serenity::CreateActionRow::SelectMenu(
-                        serenity::CreateSelectMenu::new(MONTH, month_options).placeholder("月"),
+                    CreateActionRow::SelectMenu(
+                        CreateSelectMenu::new(MONTH, month_options).placeholder("月"),
                     ),
-                    serenity::CreateActionRow::SelectMenu(
-                        serenity::CreateSelectMenu::new(DAY, day_options).placeholder("日"),
+                    CreateActionRow::SelectMenu(
+                        CreateSelectMenu::new(DAY, day_options).placeholder("日"),
                     ),
-                    serenity::CreateActionRow::Buttons(vec![serenity::CreateButton::new(SUBMIT)
-                        .style(serenity::ButtonStyle::Primary)
+                    CreateActionRow::Buttons(vec![CreateButton::new(SUBMIT)
+                        .style(ButtonStyle::Primary)
                         .label(label)]),
                 ])
             };
 
-            let response = serenity::CreateInteractionResponse::UpdateMessage(
-                serenity::CreateInteractionResponseMessage::default().components(components(date)?),
+            let response = CreateInteractionResponse::UpdateMessage(
+                CreateInteractionResponseMessage::default().components(components(date)?),
             );
             last_interaction
                 .clone()
@@ -421,17 +418,14 @@ async fn create_task(
 
             while let Some(interaction) = interaction_stream.next().await {
                 match &interaction.data.kind {
-                    serenity::ComponentInteractionDataKind::StringSelect { values } => {
+                    ComponentInteractionDataKind::StringSelect { values } => {
                         match interaction.data.custom_id.as_str() {
                             YEAR => {
                                 date = date
                                     .with_year(values[0].parse().unwrap())
                                     .context("Invalid date")?;
                                 interaction
-                                    .create_response(
-                                        ctx,
-                                        serenity::CreateInteractionResponse::Acknowledge,
-                                    )
+                                    .create_response(ctx, CreateInteractionResponse::Acknowledge)
                                     .await?;
                             }
                             MONTH => {
@@ -447,8 +441,8 @@ async fn create_task(
                                     })
                                     .context("Invalid date")?;
 
-                                let response = serenity::CreateInteractionResponse::UpdateMessage(
-                                    serenity::CreateInteractionResponseMessage::default()
+                                let response = CreateInteractionResponse::UpdateMessage(
+                                    CreateInteractionResponseMessage::default()
                                         .components(components(date)?),
                                 );
                                 interaction.create_response(ctx, response).await?;
@@ -458,16 +452,13 @@ async fn create_task(
                                     .with_day(values[0].parse().unwrap())
                                     .context("Invalid date")?;
                                 interaction
-                                    .create_response(
-                                        ctx,
-                                        serenity::CreateInteractionResponse::Acknowledge,
-                                    )
+                                    .create_response(ctx, CreateInteractionResponse::Acknowledge)
                                     .await?;
                             }
                             _ => {}
                         }
                     }
-                    serenity::ComponentInteractionDataKind::Button => {
+                    ComponentInteractionDataKind::Button => {
                         if interaction.data.custom_id == SUBMIT {
                             last_interaction.replace(interaction);
                             break;
@@ -487,29 +478,29 @@ async fn create_task(
     let time = match time {
         Some(time) => time,
         None => {
-            let hour_options = serenity::CreateSelectMenuKind::String {
+            let hour_options = CreateSelectMenuKind::String {
                 options: (0..24)
-                    .map(|i| serenity::CreateSelectMenuOption::new(i.to_string(), i.to_string()))
+                    .map(|i| CreateSelectMenuOption::new(i.to_string(), i.to_string()))
                     .collect(),
             };
-            let minute_options = serenity::CreateSelectMenuKind::String {
+            let minute_options = CreateSelectMenuKind::String {
                 options: (0..60)
                     .step_by(5)
                     .chain(iter::once(59))
-                    .map(|i| serenity::CreateSelectMenuOption::new(i.to_string(), i.to_string()))
+                    .map(|i| CreateSelectMenuOption::new(i.to_string(), i.to_string()))
                     .collect(),
             };
 
-            let response = serenity::CreateInteractionResponse::UpdateMessage(
-                serenity::CreateInteractionResponseMessage::default().components(vec![
-                    serenity::CreateActionRow::SelectMenu(
-                        serenity::CreateSelectMenu::new(HOUR, hour_options).placeholder("時"),
+            let response = CreateInteractionResponse::UpdateMessage(
+                CreateInteractionResponseMessage::default().components(vec![
+                    CreateActionRow::SelectMenu(
+                        CreateSelectMenu::new(HOUR, hour_options).placeholder("時"),
                     ),
-                    serenity::CreateActionRow::SelectMenu(
-                        serenity::CreateSelectMenu::new(MINUTE, minute_options).placeholder("分"),
+                    CreateActionRow::SelectMenu(
+                        CreateSelectMenu::new(MINUTE, minute_options).placeholder("分"),
                     ),
-                    serenity::CreateActionRow::Buttons(vec![serenity::CreateButton::new(SUBMIT)
-                        .style(serenity::ButtonStyle::Primary)
+                    CreateActionRow::Buttons(vec![CreateButton::new(SUBMIT)
+                        .style(ButtonStyle::Primary)
                         .label(label)]),
                 ]),
             );
@@ -524,30 +515,24 @@ async fn create_task(
 
             while let Some(interaction) = interaction_stream.next().await {
                 match &interaction.data.kind {
-                    serenity::ComponentInteractionDataKind::StringSelect { values } => {
+                    ComponentInteractionDataKind::StringSelect { values } => {
                         match interaction.data.custom_id.as_str() {
                             HOUR => {
                                 hour.replace(values[0].parse().unwrap());
                                 interaction
-                                    .create_response(
-                                        ctx,
-                                        serenity::CreateInteractionResponse::Acknowledge,
-                                    )
+                                    .create_response(ctx, CreateInteractionResponse::Acknowledge)
                                     .await?;
                             }
                             MINUTE => {
                                 minute.replace(values[0].parse().unwrap());
                                 interaction
-                                    .create_response(
-                                        ctx,
-                                        serenity::CreateInteractionResponse::Acknowledge,
-                                    )
+                                    .create_response(ctx, CreateInteractionResponse::Acknowledge)
                                     .await?;
                             }
                             _ => {}
                         }
                     }
-                    serenity::ComponentInteractionDataKind::Button => {
+                    ComponentInteractionDataKind::Button => {
                         if interaction.data.custom_id == SUBMIT {
                             last_interaction.replace(interaction);
                             break;
@@ -617,9 +602,9 @@ impl From<SelectLabel> for String {
 }
 
 async fn select_task(
-    ctx: Context<'_>,
+    ctx: PoiseContext<'_>,
     label: SelectLabel,
-) -> Result<(Option<serenity::ComponentInteraction>, Task), Error> {
+) -> Result<(Option<ComponentInteraction>, Task), Error> {
     const TASK: &str = "task";
     const SUBMIT: &str = "submit";
     const PREV: &str = "prev";
@@ -636,31 +621,29 @@ async fn select_task(
             .enumerate()
             .sorted_by_key(|(_, task)| task.datetime)
             .rev()
-            .map(|(idx, task)| {
-                serenity::CreateSelectMenuOption::new(task.to_field().0, idx.to_string())
-            })
+            .map(|(idx, task)| CreateSelectMenuOption::new(task.to_field().0, idx.to_string()))
             .skip(25 * page)
             .collect::<Vec<_>>();
-        let task_options = serenity::CreateSelectMenuKind::String {
+        let task_options = CreateSelectMenuKind::String {
             options: options.clone().into_iter().take(25).collect(),
         };
 
         vec![
-            serenity::CreateActionRow::SelectMenu(
-                serenity::CreateSelectMenu::new(TASK, task_options).placeholder("タスク"),
+            CreateActionRow::SelectMenu(
+                CreateSelectMenu::new(TASK, task_options).placeholder("タスク"),
             ),
-            serenity::CreateActionRow::Buttons(vec![
-                serenity::CreateButton::new(PREV)
+            CreateActionRow::Buttons(vec![
+                CreateButton::new(PREV)
                     .label("前のページ")
-                    .style(serenity::ButtonStyle::Secondary)
+                    .style(ButtonStyle::Secondary)
                     .disabled(page == 0),
-                serenity::CreateButton::new(NEXT)
+                CreateButton::new(NEXT)
                     .label("次のページ")
-                    .style(serenity::ButtonStyle::Secondary)
+                    .style(ButtonStyle::Secondary)
                     .disabled(options.len() <= 25),
             ]),
-            serenity::CreateActionRow::Buttons(vec![serenity::CreateButton::new(SUBMIT)
-                .style(serenity::ButtonStyle::Primary)
+            CreateActionRow::Buttons(vec![CreateButton::new(SUBMIT)
+                .style(ButtonStyle::Primary)
                 .label(label)]),
         ]
     };
@@ -669,9 +652,9 @@ async fn select_task(
         .send(
             poise::CreateReply::default()
                 .embed(
-                    serenity::CreateEmbed::default()
+                    CreateEmbed::default()
                         .title(format!("{}するタスクを選択", String::from(label)))
-                        .color(serenity::Color::DARK_BLUE),
+                        .color(Color::DARK_BLUE),
                 )
                 .components(components(page)),
         )
@@ -689,7 +672,7 @@ async fn select_task(
     let mut last_interaction = None;
     while let Some(interaction) = interaction_stream.next().await {
         match &interaction.data.kind {
-            serenity::ComponentInteractionDataKind::StringSelect { values } => {
+            ComponentInteractionDataKind::StringSelect { values } => {
                 if interaction.data.custom_id == TASK {
                     task.replace(
                         ctx.data()
@@ -702,34 +685,30 @@ async fn select_task(
                     );
                 }
                 interaction
-                    .create_response(&ctx, serenity::CreateInteractionResponse::Acknowledge)
+                    .create_response(&ctx, CreateInteractionResponse::Acknowledge)
                     .await?;
             }
-            serenity::ComponentInteractionDataKind::Button => {
-                match interaction.data.custom_id.as_str() {
-                    PREV => {
-                        page = page.saturating_sub(1);
-                        let response = serenity::CreateInteractionResponse::UpdateMessage(
-                            serenity::CreateInteractionResponseMessage::default()
-                                .components(components(page)),
-                        );
-                        interaction.create_response(ctx, response).await?;
-                    }
-                    NEXT => {
-                        page += 1;
-                        let response = serenity::CreateInteractionResponse::UpdateMessage(
-                            serenity::CreateInteractionResponseMessage::default()
-                                .components(components(page)),
-                        );
-                        interaction.create_response(ctx, response).await?;
-                    }
-                    SUBMIT => {
-                        last_interaction.replace(interaction);
-                        break;
-                    }
-                    _ => {}
+            ComponentInteractionDataKind::Button => match interaction.data.custom_id.as_str() {
+                PREV => {
+                    page = page.saturating_sub(1);
+                    let response = CreateInteractionResponse::UpdateMessage(
+                        CreateInteractionResponseMessage::default().components(components(page)),
+                    );
+                    interaction.create_response(ctx, response).await?;
                 }
-            }
+                NEXT => {
+                    page += 1;
+                    let response = CreateInteractionResponse::UpdateMessage(
+                        CreateInteractionResponseMessage::default().components(components(page)),
+                    );
+                    interaction.create_response(ctx, response).await?;
+                }
+                SUBMIT => {
+                    last_interaction.replace(interaction);
+                    break;
+                }
+                _ => {}
+            },
             _ => {}
         }
     }

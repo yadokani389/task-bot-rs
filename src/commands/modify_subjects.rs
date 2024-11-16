@@ -1,15 +1,15 @@
 use std::time::Duration;
 
 use anyhow::{Context as _, Error};
-use poise::serenity_prelude as serenity;
-use serenity::futures::StreamExt;
+use futures::StreamExt;
+use poise::serenity_prelude::*;
 
-use crate::{save, Context};
+use crate::{save, PoiseContext};
 
 #[poise::command(slash_command)]
 /// 教科を追加します。
 pub async fn add_subjects(
-    ctx: Context<'_>,
+    ctx: PoiseContext<'_>,
     #[description = "追加したい教科 / カンマ区切りで複数追加できます"] subjects: String,
 ) -> Result<(), Error> {
     let subjects = subjects
@@ -37,10 +37,10 @@ pub async fn add_subjects(
 
     ctx.send(
         poise::CreateReply::default().embed(
-            serenity::CreateEmbed::default()
+            CreateEmbed::default()
                 .title("追加しました")
                 .description(diff)
-                .color(serenity::Color::DARK_GREEN),
+                .color(Color::DARK_GREEN),
         ),
     )
     .await?;
@@ -49,35 +49,33 @@ pub async fn add_subjects(
 
 #[poise::command(slash_command)]
 /// 教科を削除します。
-pub async fn remove_subject(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn remove_subject(ctx: PoiseContext<'_>) -> Result<(), Error> {
     const REMOVE_SUBJECT: &str = "remove_subject";
     const REMOVE_SUBJECT_CONFIRM: &str = "remove_subject_confirm";
 
     let subjects = ctx.data().subjects.lock().unwrap().clone();
-    let subject_options = serenity::CreateSelectMenuKind::String {
+    let subject_options = CreateSelectMenuKind::String {
         options: subjects
             .iter()
-            .map(|s| serenity::CreateSelectMenuOption::new(s, s))
+            .map(|s| CreateSelectMenuOption::new(s, s))
             .collect(),
     };
     let message = ctx
         .send(
             poise::CreateReply::default()
                 .embed(
-                    serenity::CreateEmbed::default()
+                    CreateEmbed::default()
                         .title("削除したい教科を選択してください")
-                        .color(serenity::Color::DARK_BLUE),
+                        .color(Color::DARK_BLUE),
                 )
                 .components(vec![
-                    serenity::CreateActionRow::SelectMenu(serenity::CreateSelectMenu::new(
+                    CreateActionRow::SelectMenu(CreateSelectMenu::new(
                         REMOVE_SUBJECT,
                         subject_options,
                     )),
-                    serenity::CreateActionRow::Buttons(vec![serenity::CreateButton::new(
-                        REMOVE_SUBJECT_CONFIRM,
-                    )
-                    .label("削除")
-                    .style(serenity::ButtonStyle::Danger)]),
+                    CreateActionRow::Buttons(vec![CreateButton::new(REMOVE_SUBJECT_CONFIRM)
+                        .label("削除")
+                        .style(ButtonStyle::Danger)]),
                 ]),
         )
         .await?;
@@ -91,14 +89,14 @@ pub async fn remove_subject(ctx: Context<'_>) -> Result<(), Error> {
     let mut select = None;
     while let Some(interaction) = interaction_stream.next().await {
         match &interaction.data.kind {
-            serenity::ComponentInteractionDataKind::StringSelect { values, .. } => {
+            ComponentInteractionDataKind::StringSelect { values, .. } => {
                 select.replace(values[0].clone());
                 save(ctx.data())?;
                 interaction
-                    .create_response(&ctx, serenity::CreateInteractionResponse::Acknowledge)
+                    .create_response(&ctx, CreateInteractionResponse::Acknowledge)
                     .await?;
             }
-            serenity::ComponentInteractionDataKind::Button => {
+            ComponentInteractionDataKind::Button => {
                 let subject = select.context("Subject not selected")?;
                 let diff = format!(
                     "```diff\n{}\n```",
@@ -119,12 +117,12 @@ pub async fn remove_subject(ctx: Context<'_>) -> Result<(), Error> {
                     .retain(|s| s != &subject);
                 save(ctx.data())?;
 
-                let response = serenity::CreateInteractionResponse::UpdateMessage(
-                    serenity::CreateInteractionResponseMessage::new().embed(
-                        serenity::CreateEmbed::default()
+                let response = CreateInteractionResponse::UpdateMessage(
+                    CreateInteractionResponseMessage::new().embed(
+                        CreateEmbed::default()
                             .title("削除しました")
                             .description(diff)
-                            .color(serenity::Color::DARK_GREEN),
+                            .color(Color::DARK_GREEN),
                     ),
                 );
 

@@ -6,7 +6,7 @@ use std::{
 
 use anyhow::Error;
 use chrono::{DateTime, Local, NaiveTime};
-use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
@@ -91,10 +91,10 @@ pub struct Data {
     pub tasks: Mutex<Vec<Task>>,
     pub subjects: Mutex<BTreeSet<String>>,
     pub suggest_times: Mutex<BTreeMap<NaiveTime, String>>,
-    pub panel_message: Mutex<Option<serenity::Message>>,
-    pub ping_channel: Mutex<Option<serenity::ChannelId>>,
-    pub ping_role: Mutex<Option<serenity::RoleId>>,
-    pub log_channel: Mutex<Option<serenity::ChannelId>>,
+    pub panel_message: Mutex<Option<Message>>,
+    pub ping_channel: Mutex<Option<ChannelId>>,
+    pub ping_role: Mutex<Option<RoleId>>,
+    pub log_channel: Mutex<Option<ChannelId>>,
     #[serde(skip)]
     pub panel_listener: Mutex<Option<tokio::task::JoinHandle<Result<(), Error>>>>,
 }

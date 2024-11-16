@@ -3,35 +3,35 @@ use std::time::Duration;
 use anyhow::{Context as _, Error};
 use chrono::Local;
 use itertools::Itertools;
-use poise::serenity_prelude as serenity;
-use serenity::{futures::StreamExt, Mentionable};
+use poise::serenity_prelude::*;
+use {futures::StreamExt, Mentionable};
 
-use crate::{load, save, Context};
+use crate::{load, save, PoiseContext};
 
 const SHOW_TASKS: &str = "show_tasks";
 const SHOW_ARCHIVED_TASKS: &str = "show_archived_tasks";
 
 #[poise::command(slash_command)]
 /// パネルをデプロイします。
-pub async fn deploy_panel(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn deploy_panel(ctx: PoiseContext<'_>) -> Result<(), Error> {
     let message = ctx
         .channel_id()
         .send_message(
             ctx,
-            serenity::CreateMessage::default()
+            CreateMessage::default()
                 .embed(
-                    serenity::CreateEmbed::default()
+                    CreateEmbed::default()
                         .title("タスク確認")
                         .description("ボタンを押すとタスクを確認できます")
-                        .color(serenity::Color::BLUE),
+                        .color(Color::BLUE),
                 )
-                .components(vec![serenity::CreateActionRow::Buttons(vec![
-                    serenity::CreateButton::new(SHOW_TASKS)
+                .components(vec![CreateActionRow::Buttons(vec![
+                    CreateButton::new(SHOW_TASKS)
                         .label("タスク一覧")
-                        .style(serenity::ButtonStyle::Success),
-                    serenity::CreateButton::new(SHOW_ARCHIVED_TASKS)
+                        .style(ButtonStyle::Success),
+                    CreateButton::new(SHOW_ARCHIVED_TASKS)
                         .label("過去のタスク一覧")
-                        .style(serenity::ButtonStyle::Secondary),
+                        .style(ButtonStyle::Secondary),
                 ])]),
         )
         .await?;
@@ -58,9 +58,9 @@ pub async fn deploy_panel(ctx: Context<'_>) -> Result<(), Error> {
     ctx.send(
         poise::CreateReply::default()
             .embed(
-                serenity::CreateEmbed::default()
+                CreateEmbed::default()
                     .title("パネルをデプロイしました")
-                    .color(serenity::Color::DARK_GREEN),
+                    .color(Color::DARK_GREEN),
             )
             .ephemeral(true),
     )
@@ -68,10 +68,7 @@ pub async fn deploy_panel(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-pub async fn listen_panel_interactions(
-    ctx: serenity::Context,
-    msg: serenity::Message,
-) -> Result<(), Error> {
+pub async fn listen_panel_interactions(ctx: Context, msg: Message) -> Result<(), Error> {
     let mut interaction_stream = msg.await_component_interaction(&ctx).stream();
     while let Some(interaction) = interaction_stream.next().await {
         match interaction.data.custom_id.as_str() {
@@ -87,38 +84,31 @@ pub async fn listen_panel_interactions(
     Ok(())
 }
 
-async fn log(
-    ctx: &serenity::Context,
-    user: &serenity::User,
-    message: impl Into<String>,
-) -> Result<(), Error> {
+async fn log(ctx: &Context, user: &User, message: impl Into<String>) -> Result<(), Error> {
     let log_channel = *load()?.log_channel.lock().unwrap();
 
     log_channel
         .context("log channel not set")?
         .send_message(
             &ctx,
-            serenity::CreateMessage::default().embed(
-                serenity::CreateEmbed::default()
+            CreateMessage::default().embed(
+                CreateEmbed::default()
                     .thumbnail(user.avatar_url().unwrap_or_default())
                     .author(
-                        serenity::CreateEmbedAuthor::new(user.name.clone())
+                        CreateEmbedAuthor::new(user.name.clone())
                             .icon_url(user.avatar_url().unwrap_or_default()),
                     )
                     .title("パネル操作")
                     .timestamp(Local::now())
                     .description(message)
-                    .color(serenity::Color::DARK_BLUE),
+                    .color(Color::DARK_BLUE),
             ),
         )
         .await?;
     Ok(())
 }
 
-async fn show_tasks(
-    interaction: serenity::ComponentInteraction,
-    ctx: serenity::Context,
-) -> Result<(), Error> {
+async fn show_tasks(interaction: ComponentInteraction, ctx: Context) -> Result<(), Error> {
     const PREV: &str = "prev";
     const NEXT: &str = "next";
 
@@ -132,9 +122,9 @@ async fn show_tasks(
             .map(|task| task.to_field())
             .skip(5 * page);
 
-        Ok(serenity::CreateInteractionResponseMessage::new()
+        Ok(CreateInteractionResponseMessage::new()
             .embed(
-                serenity::CreateEmbed::default()
+                CreateEmbed::default()
                     .title("タスク一覧")
                     .description(if fields.len() == 0 {
                         "ありません！:tada:"
@@ -142,26 +132,23 @@ async fn show_tasks(
                         ""
                     })
                     .fields(fields.clone().take(5))
-                    .color(serenity::Color::DARK_BLUE),
+                    .color(Color::DARK_BLUE),
             )
-            .components(vec![serenity::CreateActionRow::Buttons(vec![
-                serenity::CreateButton::new(PREV)
+            .components(vec![CreateActionRow::Buttons(vec![
+                CreateButton::new(PREV)
                     .label("前のページ")
-                    .style(serenity::ButtonStyle::Secondary)
+                    .style(ButtonStyle::Secondary)
                     .disabled(page == 0),
-                serenity::CreateButton::new(NEXT)
+                CreateButton::new(NEXT)
                     .label("次のページ")
-                    .style(serenity::ButtonStyle::Secondary)
+                    .style(ButtonStyle::Secondary)
                     .disabled(fields.len() <= 5),
             ])])
             .ephemeral(true))
     };
 
     interaction
-        .create_response(
-            &ctx,
-            serenity::CreateInteractionResponse::Message(message(page)?),
-        )
+        .create_response(&ctx, CreateInteractionResponse::Message(message(page)?))
         .await?;
 
     log(
@@ -188,7 +175,7 @@ async fn show_tasks(
                 interaction
                     .create_response(
                         &ctx,
-                        serenity::CreateInteractionResponse::UpdateMessage(message(page)?),
+                        CreateInteractionResponse::UpdateMessage(message(page)?),
                     )
                     .await?;
             }
@@ -197,7 +184,7 @@ async fn show_tasks(
                 interaction
                     .create_response(
                         &ctx,
-                        serenity::CreateInteractionResponse::UpdateMessage(message(page)?),
+                        CreateInteractionResponse::UpdateMessage(message(page)?),
                     )
                     .await?;
             }
@@ -207,10 +194,7 @@ async fn show_tasks(
     Ok(())
 }
 
-async fn show_archived_tasks(
-    interaction: serenity::ComponentInteraction,
-    ctx: serenity::Context,
-) -> Result<(), Error> {
+async fn show_archived_tasks(interaction: ComponentInteraction, ctx: Context) -> Result<(), Error> {
     const PREV: &str = "prev";
     const NEXT: &str = "next";
 
@@ -225,9 +209,9 @@ async fn show_archived_tasks(
             .map(|task| task.to_field())
             .skip(5 * page);
 
-        Ok(serenity::CreateInteractionResponseMessage::new()
+        Ok(CreateInteractionResponseMessage::new()
             .embed(
-                serenity::CreateEmbed::default()
+                CreateEmbed::default()
                     .title("過去のタスク一覧")
                     .description(if fields.len() == 0 {
                         "ありません"
@@ -235,26 +219,23 @@ async fn show_archived_tasks(
                         ""
                     })
                     .fields(fields.clone().take(5).collect::<Vec<_>>())
-                    .color(serenity::Color::DARK_BLUE),
+                    .color(Color::DARK_BLUE),
             )
-            .components(vec![serenity::CreateActionRow::Buttons(vec![
-                serenity::CreateButton::new(PREV)
+            .components(vec![CreateActionRow::Buttons(vec![
+                CreateButton::new(PREV)
                     .label("前のページ")
-                    .style(serenity::ButtonStyle::Secondary)
+                    .style(ButtonStyle::Secondary)
                     .disabled(page == 0),
-                serenity::CreateButton::new(NEXT)
+                CreateButton::new(NEXT)
                     .label("次のページ")
-                    .style(serenity::ButtonStyle::Secondary)
+                    .style(ButtonStyle::Secondary)
                     .disabled(fields.len() <= 5),
             ])])
             .ephemeral(true))
     };
 
     interaction
-        .create_response(
-            &ctx,
-            serenity::CreateInteractionResponse::Message(message(page)?),
-        )
+        .create_response(&ctx, CreateInteractionResponse::Message(message(page)?))
         .await?;
 
     log(
@@ -281,7 +262,7 @@ async fn show_archived_tasks(
                 interaction
                     .create_response(
                         &ctx,
-                        serenity::CreateInteractionResponse::UpdateMessage(message(page)?),
+                        CreateInteractionResponse::UpdateMessage(message(page)?),
                     )
                     .await?;
             }
@@ -290,7 +271,7 @@ async fn show_archived_tasks(
                 interaction
                     .create_response(
                         &ctx,
-                        serenity::CreateInteractionResponse::UpdateMessage(message(page)?),
+                        CreateInteractionResponse::UpdateMessage(message(page)?),
                     )
                     .await?;
             }

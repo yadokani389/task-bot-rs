@@ -3,33 +3,31 @@ use std::{iter, time::Duration};
 use anyhow::{Context as _, Error};
 
 use chrono::{NaiveTime, Timelike};
-use poise::serenity_prelude as serenity;
-use serenity::futures::StreamExt;
+use futures::StreamExt;
+use poise::serenity_prelude::*;
 
-use crate::{save, Context};
+use crate::{save, PoiseContext};
 
 #[poise::command(slash_command)]
 /// よく使う時間を追加します。
 pub async fn add_suggest_time(
-    ctx: Context<'_>,
+    ctx: PoiseContext<'_>,
     #[description = "よく使う時間のラベル(例: 1限開始時刻)"] label: String,
 ) -> Result<(), Error> {
     const HOUR: &str = "hour";
     const MINUTE: &str = "minute";
     const SUBMIT: &str = "submit";
 
-    let hour_options = serenity::CreateSelectMenuKind::String {
+    let hour_options = CreateSelectMenuKind::String {
         options: (0..24)
-            .map(|hour| serenity::CreateSelectMenuOption::new(hour.to_string(), hour.to_string()))
+            .map(|hour| CreateSelectMenuOption::new(hour.to_string(), hour.to_string()))
             .collect(),
     };
-    let minute_options = serenity::CreateSelectMenuKind::String {
+    let minute_options = CreateSelectMenuKind::String {
         options: (0..60)
             .step_by(5)
             .chain(iter::once(59))
-            .map(|minute| {
-                serenity::CreateSelectMenuOption::new(minute.to_string(), minute.to_string())
-            })
+            .map(|minute| CreateSelectMenuOption::new(minute.to_string(), minute.to_string()))
             .collect(),
     };
 
@@ -37,20 +35,18 @@ pub async fn add_suggest_time(
         .send(
             poise::CreateReply::default()
                 .embed(
-                    serenity::CreateEmbed::default()
+                    CreateEmbed::default()
                         .title(format!("よく使う時間({})を追加", label))
-                        .color(serenity::Color::DARK_BLUE),
+                        .color(Color::DARK_BLUE),
                 )
                 .components(vec![
-                    serenity::CreateActionRow::SelectMenu(
-                        serenity::CreateSelectMenu::new(HOUR, hour_options).placeholder("時"),
+                    CreateActionRow::SelectMenu(
+                        CreateSelectMenu::new(HOUR, hour_options).placeholder("時"),
                     ),
-                    serenity::CreateActionRow::SelectMenu(
-                        serenity::CreateSelectMenu::new(MINUTE, minute_options).placeholder("分"),
+                    CreateActionRow::SelectMenu(
+                        CreateSelectMenu::new(MINUTE, minute_options).placeholder("分"),
                     ),
-                    serenity::CreateActionRow::Buttons(vec![
-                        serenity::CreateButton::new(SUBMIT).label("送信")
-                    ]),
+                    CreateActionRow::Buttons(vec![CreateButton::new(SUBMIT).label("送信")]),
                 ]),
         )
         .await?;
@@ -67,7 +63,7 @@ pub async fn add_suggest_time(
 
     while let Some(interaction) = interaction_stream.next().await {
         match &interaction.data.kind {
-            serenity::ComponentInteractionDataKind::StringSelect { values } => {
+            ComponentInteractionDataKind::StringSelect { values } => {
                 match interaction.data.custom_id.as_str() {
                     HOUR => {
                         let hour = values[0].parse::<u32>()?;
@@ -80,10 +76,10 @@ pub async fn add_suggest_time(
                     _ => {}
                 }
                 interaction
-                    .create_response(ctx, serenity::CreateInteractionResponse::Acknowledge)
+                    .create_response(ctx, CreateInteractionResponse::Acknowledge)
                     .await?;
             }
-            serenity::ComponentInteractionDataKind::Button => {
+            ComponentInteractionDataKind::Button => {
                 if interaction.data.custom_id == SUBMIT {
                     ctx.data()
                         .suggest_times
@@ -110,13 +106,13 @@ pub async fn add_suggest_time(
                             .join("\n")
                     );
 
-                    let response = serenity::CreateInteractionResponse::UpdateMessage(
-                        serenity::CreateInteractionResponseMessage::default()
+                    let response = CreateInteractionResponse::UpdateMessage(
+                        CreateInteractionResponseMessage::default()
                             .embed(
-                                serenity::CreateEmbed::default()
+                                CreateEmbed::default()
                                     .title(title)
                                     .description(diff)
-                                    .color(serenity::Color::DARK_GREEN),
+                                    .color(Color::DARK_GREEN),
                             )
                             .components(vec![]),
                     );
@@ -133,17 +129,17 @@ pub async fn add_suggest_time(
 
 #[poise::command(slash_command)]
 /// よく使う時間を削除します。
-pub async fn remove_suggest_time(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn remove_suggest_time(ctx: PoiseContext<'_>) -> Result<(), Error> {
     const LABEL: &str = "label";
     const SUBMIT: &str = "submit";
 
     let suggest_times = ctx.data().suggest_times.lock().unwrap().clone();
 
-    let suggest_time_options = serenity::CreateSelectMenuKind::String {
+    let suggest_time_options = CreateSelectMenuKind::String {
         options: suggest_times
             .iter()
             .map(|(t, l)| {
-                serenity::CreateSelectMenuOption::new(
+                CreateSelectMenuOption::new(
                     format!("{} ({})", l, t.format("%H:%M")),
                     serde_json::to_string(t).unwrap(),
                 )
@@ -155,18 +151,13 @@ pub async fn remove_suggest_time(ctx: Context<'_>) -> Result<(), Error> {
         .send(
             poise::CreateReply::default()
                 .embed(
-                    serenity::CreateEmbed::default()
+                    CreateEmbed::default()
                         .title("よく使う時間を削除")
-                        .color(serenity::Color::DARK_BLUE),
+                        .color(Color::DARK_BLUE),
                 )
                 .components(vec![
-                    serenity::CreateActionRow::SelectMenu(serenity::CreateSelectMenu::new(
-                        LABEL,
-                        suggest_time_options,
-                    )),
-                    serenity::CreateActionRow::Buttons(vec![
-                        serenity::CreateButton::new(SUBMIT).label("送信")
-                    ]),
+                    CreateActionRow::SelectMenu(CreateSelectMenu::new(LABEL, suggest_time_options)),
+                    CreateActionRow::Buttons(vec![CreateButton::new(SUBMIT).label("送信")]),
                 ]),
         )
         .await?;
@@ -183,15 +174,15 @@ pub async fn remove_suggest_time(ctx: Context<'_>) -> Result<(), Error> {
 
     while let Some(interaction) = interaction_stream.next().await {
         match &interaction.data.kind {
-            serenity::ComponentInteractionDataKind::StringSelect { values } => {
+            ComponentInteractionDataKind::StringSelect { values } => {
                 if interaction.data.custom_id == LABEL {
                     time = Some(serde_json::from_str(&values[0].clone())?);
                 }
                 interaction
-                    .create_response(ctx, serenity::CreateInteractionResponse::Acknowledge)
+                    .create_response(ctx, CreateInteractionResponse::Acknowledge)
                     .await?;
             }
-            serenity::ComponentInteractionDataKind::Button => {
+            ComponentInteractionDataKind::Button => {
                 if interaction.data.custom_id == SUBMIT {
                     if let Some(time) = time {
                         let title = format!(
@@ -216,13 +207,13 @@ pub async fn remove_suggest_time(ctx: Context<'_>) -> Result<(), Error> {
                                 .join("\n")
                         );
 
-                        let response = serenity::CreateInteractionResponse::UpdateMessage(
-                            serenity::CreateInteractionResponseMessage::default()
+                        let response = CreateInteractionResponse::UpdateMessage(
+                            CreateInteractionResponseMessage::default()
                                 .embed(
-                                    serenity::CreateEmbed::default()
+                                    CreateEmbed::default()
                                         .title(title)
                                         .description(diff)
-                                        .color(serenity::Color::DARK_GREEN),
+                                        .color(Color::DARK_GREEN),
                                 )
                                 .components(vec![]),
                         );

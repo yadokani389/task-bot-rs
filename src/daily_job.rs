@@ -1,13 +1,12 @@
 use anyhow::{Context as _, Error, Ok};
 use chrono::{Duration, Local, NaiveTime};
 use itertools::Itertools;
-use poise::serenity_prelude as serenity;
-use serenity::Mentionable;
+use poise::serenity_prelude::*;
 use tokio::time::{sleep_until, Instant};
 
 use crate::load;
 
-pub async fn run_daily_job(ctx: serenity::Context) {
+pub async fn run_daily_job(ctx: Context) {
     loop {
         let now = Local::now();
         let target_time = {
@@ -31,7 +30,7 @@ pub async fn run_daily_job(ctx: serenity::Context) {
     }
 }
 
-async fn job(ctx: serenity::Context) -> Result<(), Error> {
+async fn job(ctx: Context) -> Result<(), Error> {
     let data = load()?;
     let ping_channel = (*data.ping_channel.lock().unwrap()).context("Ping channel not set")?;
     let ping_role = (*data.ping_role.lock().unwrap()).context("Ping role not set")?;
@@ -69,14 +68,14 @@ async fn job(ctx: serenity::Context) -> Result<(), Error> {
     ping_channel
         .send_message(
             ctx,
-            serenity::CreateMessage::new()
+            CreateMessage::new()
                 .content(format!("{}", ping_role.mention()))
                 .embed(
-                    serenity::CreateEmbed::default()
+                    CreateEmbed::default()
                         .title("タスク通知")
                         .description("明日のタスクをお知らせします！")
                         .fields(fields)
-                        .color(serenity::Color::RED),
+                        .color(Color::RED),
                 ),
         )
         .await?;

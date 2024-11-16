@@ -1,6 +1,6 @@
 use anyhow::Error;
 use dotenvy::dotenv;
-use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::*;
 
 mod data;
 use data::*;
@@ -8,15 +8,15 @@ mod commands;
 use commands::*;
 mod daily_job;
 
-pub type Context<'a> = poise::Context<'a, Data, Error>;
+pub type PoiseContext<'a> = poise::Context<'a, Data, Error>;
 
 async fn event_handler(
-    ctx: &serenity::Context,
-    event: &serenity::FullEvent,
+    ctx: &Context,
+    event: &FullEvent,
     _framework: poise::FrameworkContext<'_, Data, Error>,
     data: &Data,
 ) -> Result<(), Error> {
-    if let serenity::FullEvent::Ready { data_about_bot } = event {
+    if let FullEvent::Ready { data_about_bot } = event {
         println!("Logged in as {}", data_about_bot.user.name);
         match load() {
             Ok(restore) => {
@@ -50,7 +50,7 @@ async fn main() {
     dotenv().expect(".env file not found");
 
     let token = std::env::var("DISCORD_TOKEN").expect("Missing DISCORD_TOKEN");
-    let intents = serenity::GatewayIntents::non_privileged();
+    let intents = GatewayIntents::non_privileged();
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
@@ -80,7 +80,7 @@ async fn main() {
         })
         .build();
 
-    let client = serenity::ClientBuilder::new(token, intents)
+    let client = ClientBuilder::new(token, intents)
         .framework(framework)
         .await;
     client

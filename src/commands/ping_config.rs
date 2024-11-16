@@ -1,14 +1,14 @@
 use std::time::Duration;
 
 use anyhow::{Context as _, Error};
-use poise::serenity_prelude as serenity;
-use serenity::{futures::StreamExt, Mentionable};
+use futures::StreamExt;
+use poise::serenity_prelude::*;
 
-use crate::{save, Context};
+use crate::{save, PoiseContext};
 
 #[poise::command(slash_command)]
 /// タスク通知を送るチャンネルを設定します。
-pub async fn set_ping_channel(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn set_ping_channel(ctx: PoiseContext<'_>) -> Result<(), Error> {
     ctx.data()
         .ping_channel
         .lock()
@@ -17,10 +17,10 @@ pub async fn set_ping_channel(ctx: Context<'_>) -> Result<(), Error> {
     save(ctx.data())?;
     ctx.send(
         poise::CreateReply::default().embed(
-            serenity::CreateEmbed::default()
+            CreateEmbed::default()
                 .title("通知チャンネルを設定しました")
                 .description(format!("{}", ctx.channel_id().mention()))
-                .color(serenity::Color::DARK_BLUE),
+                .color(Color::DARK_BLUE),
         ),
     )
     .await?;
@@ -29,30 +29,30 @@ pub async fn set_ping_channel(ctx: Context<'_>) -> Result<(), Error> {
 
 #[poise::command(slash_command)]
 /// タスク通知を送るロールを設定します。
-pub async fn set_ping_role(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn set_ping_role(ctx: PoiseContext<'_>) -> Result<(), Error> {
     const SET_PING_ROLE: &str = "set_ping_role";
 
     let message = ctx
         .send(
             poise::CreateReply::default()
                 .embed(
-                    serenity::CreateEmbed::default()
+                    CreateEmbed::default()
                         .title("ロールを設定してください")
-                        .color(serenity::Color::DARK_BLUE),
+                        .color(Color::DARK_BLUE),
                 )
                 .components(vec![
-                    serenity::CreateActionRow::SelectMenu(
-                        serenity::CreateSelectMenu::new(
+                    CreateActionRow::SelectMenu(
+                        CreateSelectMenu::new(
                             SET_PING_ROLE,
-                            serenity::CreateSelectMenuKind::Role {
+                            CreateSelectMenuKind::Role {
                                 default_roles: None,
                             },
                         )
                         .placeholder("ロールを選択してください"),
                     ),
-                    serenity::CreateActionRow::Buttons(vec![serenity::CreateButton::new("submit")
+                    CreateActionRow::Buttons(vec![CreateButton::new("submit")
                         .label("送信")
-                        .style(serenity::ButtonStyle::Primary)]),
+                        .style(ButtonStyle::Primary)]),
                 ]),
         )
         .await?;
@@ -68,13 +68,13 @@ pub async fn set_ping_role(ctx: Context<'_>) -> Result<(), Error> {
     let mut last_interaction = None;
     while let Some(interaction) = interaction_stream.next().await {
         match &interaction.data.kind {
-            serenity::ComponentInteractionDataKind::RoleSelect { values } => {
+            ComponentInteractionDataKind::RoleSelect { values } => {
                 select.replace(values[0]);
                 interaction
-                    .create_response(ctx, serenity::CreateInteractionResponse::Acknowledge)
+                    .create_response(ctx, CreateInteractionResponse::Acknowledge)
                     .await?;
             }
-            serenity::ComponentInteractionDataKind::Button => {
+            ComponentInteractionDataKind::Button => {
                 last_interaction.replace(interaction.clone());
                 break;
             }
@@ -91,13 +91,13 @@ pub async fn set_ping_role(ctx: Context<'_>) -> Result<(), Error> {
         .context("No interaction")?
         .create_response(
             &ctx,
-            serenity::CreateInteractionResponse::UpdateMessage(
-                serenity::CreateInteractionResponseMessage::default()
+            CreateInteractionResponse::UpdateMessage(
+                CreateInteractionResponseMessage::default()
                     .embed(
-                        serenity::CreateEmbed::default()
+                        CreateEmbed::default()
                             .title("ロールを設定しました")
                             .description(format!("{}", select.unwrap().mention()))
-                            .color(serenity::Color::DARK_BLUE),
+                            .color(Color::DARK_BLUE),
                     )
                     .components(vec![]),
             ),

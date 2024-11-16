@@ -1,13 +1,12 @@
 use anyhow::Error;
 
-use poise::serenity_prelude as serenity;
-use serenity::Mentionable;
+use poise::serenity_prelude::*;
 
-use crate::{save, Context};
+use crate::{save, PoiseContext};
 
 #[poise::command(slash_command)]
 /// 管理者向けログを送るチャンネルを設定します。
-pub async fn set_log_channel(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn set_log_channel(ctx: PoiseContext<'_>) -> Result<(), Error> {
     ctx.data()
         .log_channel
         .lock()
@@ -16,10 +15,10 @@ pub async fn set_log_channel(ctx: Context<'_>) -> Result<(), Error> {
     save(ctx.data())?;
     ctx.send(
         poise::CreateReply::default().embed(
-            serenity::CreateEmbed::default()
+            CreateEmbed::default()
                 .title("ログチャンネルを設定しました")
                 .description(format!("{}", ctx.channel_id().mention()))
-                .color(serenity::Color::DARK_BLUE),
+                .color(Color::DARK_BLUE),
         ),
     )
     .await?;
