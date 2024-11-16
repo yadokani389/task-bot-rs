@@ -113,6 +113,7 @@ pub async fn edit_task(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
+#[derive(Clone, Copy)]
 enum CreateLabel {
     Add,
     Edit,
@@ -139,8 +140,6 @@ async fn create_task(
     const DATE: &str = "date";
     const TIME: &str = "time";
     const SUBMIT: &str = "submit";
-
-    let label = &String::from(label);
 
     let others = Uuid::new_v4().to_string();
 
@@ -198,7 +197,7 @@ async fn create_task(
 
     let message = {
         let embed = serenity::CreateEmbed::default()
-            .title(format!("タスクを{label}します"))
+            .title(format!("タスクを{}します", String::from(label)))
             .color(serenity::Color::DARK_BLUE);
         let components = vec![
             serenity::CreateActionRow::SelectMenu(
@@ -601,6 +600,7 @@ async fn create_task(
     Ok((message, task))
 }
 
+#[derive(Clone, Copy)]
 enum SelectLabel {
     Remove,
     Edit,
@@ -624,8 +624,6 @@ async fn select_task(
     const SUBMIT: &str = "submit";
     const PREV: &str = "prev";
     const NEXT: &str = "next";
-
-    let label = &String::from(label);
 
     let mut page = 0;
     let components = |page: usize| {
@@ -672,7 +670,7 @@ async fn select_task(
             poise::CreateReply::default()
                 .embed(
                     serenity::CreateEmbed::default()
-                        .title(format!("{label}するタスクを選択"))
+                        .title(format!("{}するタスクを選択", String::from(label)))
                         .color(serenity::Color::DARK_BLUE),
                 )
                 .components(components(page)),
