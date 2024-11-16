@@ -113,6 +113,16 @@ pub async fn edit_task(ctx: PoiseContext<'_>) -> Result<(), Error> {
     Ok(())
 }
 
+fn to_ja_weekday(date: String) -> String {
+    date.replace("Sun", "日")
+        .replace("Mon", "月")
+        .replace("Tue", "火")
+        .replace("Wed", "水")
+        .replace("Thu", "木")
+        .replace("Fri", "金")
+        .replace("Sat", "土")
+}
+
 #[derive(Clone, Copy)]
 enum CreateLabel {
     Add,
@@ -170,7 +180,7 @@ async fn create_task(
                 .map(|i| {
                     let date = Local::now().date_naive() + Duration::days(i);
                     CreateSelectMenuOption::new(
-                        date.format("%Y/%m/%d (%a)").to_string(),
+                        to_ja_weekday(date.format("%Y/%m/%d (%a)").to_string()),
                         serde_json::to_string(&date).unwrap(),
                     )
                 })
@@ -208,16 +218,7 @@ async fn create_task(
             ),
             CreateActionRow::SelectMenu(CreateSelectMenu::new(DATE, date_options).placeholder(
                 defaults.clone().map_or("日付".into(), |x| {
-                    x.datetime
-                        .format("%Y/%m/%d (%a)")
-                        .to_string()
-                        .replace("Sun", "日")
-                        .replace("Mon", "月")
-                        .replace("Tue", "火")
-                        .replace("Wed", "水")
-                        .replace("Thu", "木")
-                        .replace("Fri", "金")
-                        .replace("Sat", "土")
+                    to_ja_weekday(x.datetime.format("%Y/%m/%d (%a)").to_string())
                 }),
             )),
             CreateActionRow::SelectMenu(
