@@ -4,12 +4,12 @@ use std::{
     sync::Mutex,
 };
 
-use anyhow::Error;
-use chrono::{DateTime, Local, NaiveTime};
+use anyhow::{Context, Error};
+use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone};
 use poise::serenity_prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Category {
     // イベント
     Event,
@@ -59,7 +59,7 @@ impl Category {
     ];
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Task {
     pub category: Category,
     pub subject: String,
@@ -84,11 +84,56 @@ impl Task {
             false,
         )
     }
+
+    pub fn as_partial(&self) -> PartialTask {
+        self.clone().into()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct PartialTask {
+    pub category: Option<Category>,
+    pub subject: Option<String>,
+    pub details: Option<String>,
+    pub date: Option<NaiveDate>,
+    pub time: Option<NaiveTime>,
+}
+
+impl PartialTask {
+    pub fn to_task(&self) -> Result<Task, Error> {
+        let category = self.category.context("Category not selected")?;
+        let subject = self.subject.clone().context("Subject not selected")?;
+        let details = self.details.clone().context("Details not selected")?;
+        let date = self.date.context("Date not selected")?;
+        let time = self.time.context("Time not selected")?;
+        let datetime = Local
+            .from_local_datetime(&date.and_time(time))
+            .single()
+            .context("Invalid date and time")?;
+        Ok(Task {
+            category,
+            subject,
+            details,
+            datetime,
+        })
+    }
+}
+
+impl From<Task> for PartialTask {
+    fn from(task: Task) -> Self {
+        Self {
+            category: Some(task.category),
+            subject: Some(task.subject),
+            details: Some(task.details),
+            date: Some(task.datetime.date_naive()),
+            time: Some(task.datetime.time()),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Data {
-    pub tasks: Mutex<Vec<Task>>,
+    pub tasks: Mutex<BTreeSet<Task>>,
     pub subjects: Mutex<BTreeSet<String>>,
     pub suggest_times: Mutex<BTreeMap<NaiveTime, String>>,
     pub panel_message: Mutex<Option<Message>>,

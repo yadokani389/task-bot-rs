@@ -2,7 +2,7 @@ use std::{iter, time::Duration};
 
 use anyhow::{Context as _, Error};
 
-use chrono::{NaiveTime, Timelike};
+use chrono::NaiveTime;
 use futures::StreamExt;
 use poise::serenity_prelude::*;
 
@@ -18,17 +18,37 @@ pub async fn add_suggest_time(
     const MINUTE: &str = "minute";
     const SUBMIT: &str = "submit";
 
-    let hour_options = CreateSelectMenuKind::String {
-        options: (0..24)
-            .map(|hour| CreateSelectMenuOption::new(hour.to_string(), hour.to_string()))
-            .collect(),
-    };
-    let minute_options = CreateSelectMenuKind::String {
-        options: (0..60)
-            .step_by(5)
-            .chain(iter::once(59))
-            .map(|minute| CreateSelectMenuOption::new(minute.to_string(), minute.to_string()))
-            .collect(),
+    let components = |hour: Option<u32>, minute: Option<u32>| {
+        let hour_options = CreateSelectMenuKind::String {
+            options: (0..24)
+                .map(|h| {
+                    CreateSelectMenuOption::new(h.to_string(), h.to_string())
+                        .default_selection(hour == Some(h))
+                })
+                .collect(),
+        };
+        let minute_options = CreateSelectMenuKind::String {
+            options: (0..60)
+                .step_by(5)
+                .chain(iter::once(59))
+                .map(|m| {
+                    CreateSelectMenuOption::new(m.to_string(), m.to_string())
+                        .default_selection(minute == Some(m))
+                })
+                .collect(),
+        };
+
+        vec![
+            CreateActionRow::SelectMenu(
+                CreateSelectMenu::new(HOUR, hour_options).placeholder("時"),
+            ),
+            CreateActionRow::SelectMenu(
+                CreateSelectMenu::new(MINUTE, minute_options).placeholder("分"),
+            ),
+            CreateActionRow::Buttons(vec![CreateButton::new(SUBMIT)
+                .label("送信")
+                .disabled(hour.is_none() || minute.is_none())]),
+        ]
     };
 
     let message = ctx
@@ -39,15 +59,7 @@ pub async fn add_suggest_time(
                         .title(format!("よく使う時間({})を追加", label))
                         .color(Color::DARK_BLUE),
                 )
-                .components(vec![
-                    CreateActionRow::SelectMenu(
-                        CreateSelectMenu::new(HOUR, hour_options).placeholder("時"),
-                    ),
-                    CreateActionRow::SelectMenu(
-                        CreateSelectMenu::new(MINUTE, minute_options).placeholder("分"),
-                    ),
-                    CreateActionRow::Buttons(vec![CreateButton::new(SUBMIT).label("送信")]),
-                ]),
+                .components(components(None, None)),
         )
         .await?;
 
@@ -59,28 +71,39 @@ pub async fn add_suggest_time(
         .timeout(Duration::from_secs(60 * 30))
         .stream();
 
-    let mut time = NaiveTime::from_hms_opt(0, 0, 0).unwrap();
+    let mut hour = None;
+    let mut minute = None;
 
     while let Some(interaction) = interaction_stream.next().await {
         match &interaction.data.kind {
             ComponentInteractionDataKind::StringSelect { values } => {
                 match interaction.data.custom_id.as_str() {
                     HOUR => {
-                        let hour = values[0].parse::<u32>()?;
-                        time = time.with_hour(hour).context("Invalid hour")?;
+                        hour.replace(values[0].parse::<u32>()?);
                     }
                     MINUTE => {
-                        let minute = values[0].parse::<u32>()?;
-                        time = time.with_minute(minute).context("Invalid minute")?;
+                        minute.replace(values[0].parse::<u32>()?);
                     }
                     _ => {}
                 }
                 interaction
-                    .create_response(ctx, CreateInteractionResponse::Acknowledge)
+                    .create_response(
+                        ctx,
+                        CreateInteractionResponse::UpdateMessage(
+                            CreateInteractionResponseMessage::default()
+                                .components(components(hour, minute)),
+                        ),
+                    )
                     .await?;
             }
             ComponentInteractionDataKind::Button => {
                 if interaction.data.custom_id == SUBMIT {
+                    let time = NaiveTime::from_hms_opt(
+                        hour.context("Hour not selected")?,
+                        minute.context("Minute not selected")?,
+                        0,
+                    )
+                    .context("Invalid time")?;
                     ctx.data()
                         .suggest_times
                         .lock()
@@ -135,16 +158,26 @@ pub async fn remove_suggest_time(ctx: PoiseContext<'_>) -> Result<(), Error> {
 
     let suggest_times = ctx.data().suggest_times.lock().unwrap().clone();
 
-    let suggest_time_options = CreateSelectMenuKind::String {
-        options: suggest_times
-            .iter()
-            .map(|(t, l)| {
-                CreateSelectMenuOption::new(
-                    format!("{} ({})", l, t.format("%H:%M")),
-                    serde_json::to_string(t).unwrap(),
-                )
-            })
-            .collect(),
+    let components = |selected_time: Option<NaiveTime>| {
+        let suggest_time_options = CreateSelectMenuKind::String {
+            options: suggest_times
+                .iter()
+                .map(|(t, l)| {
+                    CreateSelectMenuOption::new(
+                        format!("{} ({})", l, t.format("%H:%M")),
+                        serde_json::to_string(t).unwrap(),
+                    )
+                    .default_selection(selected_time == Some(*t))
+                })
+                .collect(),
+        };
+
+        vec![
+            CreateActionRow::SelectMenu(CreateSelectMenu::new(LABEL, suggest_time_options)),
+            CreateActionRow::Buttons(vec![CreateButton::new(SUBMIT)
+                .label("送信")
+                .disabled(selected_time.is_none())]),
+        ]
     };
 
     let message = ctx
@@ -155,10 +188,7 @@ pub async fn remove_suggest_time(ctx: PoiseContext<'_>) -> Result<(), Error> {
                         .title("よく使う時間を削除")
                         .color(Color::DARK_BLUE),
                 )
-                .components(vec![
-                    CreateActionRow::SelectMenu(CreateSelectMenu::new(LABEL, suggest_time_options)),
-                    CreateActionRow::Buttons(vec![CreateButton::new(SUBMIT).label("送信")]),
-                ]),
+                .components(components(None)),
         )
         .await?;
 
@@ -176,10 +206,16 @@ pub async fn remove_suggest_time(ctx: PoiseContext<'_>) -> Result<(), Error> {
         match &interaction.data.kind {
             ComponentInteractionDataKind::StringSelect { values } => {
                 if interaction.data.custom_id == LABEL {
-                    time = Some(serde_json::from_str(&values[0].clone())?);
+                    time.replace(serde_json::from_str(&values[0])?);
                 }
                 interaction
-                    .create_response(ctx, CreateInteractionResponse::Acknowledge)
+                    .create_response(
+                        ctx,
+                        CreateInteractionResponse::UpdateMessage(
+                            CreateInteractionResponseMessage::default()
+                                .components(components(time)),
+                        ),
+                    )
                     .await?;
             }
             ComponentInteractionDataKind::Button => {
