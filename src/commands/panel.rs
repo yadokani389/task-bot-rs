@@ -10,6 +10,7 @@ use crate::{load, save, PoiseContext};
 
 const SHOW_TASKS: &str = "show_tasks";
 const SHOW_ARCHIVED_TASKS: &str = "show_archived_tasks";
+const TASKS_PER_PAGE: usize = 7;
 
 #[poise::command(slash_command)]
 /// パネルをデプロイします。
@@ -120,7 +121,7 @@ async fn show_tasks(interaction: ComponentInteraction, ctx: Context) -> Result<(
             .filter(|e| Local::now() <= e.datetime)
             .sorted_by_key(|e| e.datetime)
             .map(|task| task.to_field())
-            .skip(5 * page);
+            .skip(TASKS_PER_PAGE * page);
 
         Ok(CreateInteractionResponseMessage::new()
             .embed(
@@ -131,7 +132,7 @@ async fn show_tasks(interaction: ComponentInteraction, ctx: Context) -> Result<(
                     } else {
                         ""
                     })
-                    .fields(fields.clone().take(5))
+                    .fields(fields.clone().take(TASKS_PER_PAGE))
                     .color(Color::DARK_BLUE),
             )
             .components(vec![CreateActionRow::Buttons(vec![
@@ -142,7 +143,7 @@ async fn show_tasks(interaction: ComponentInteraction, ctx: Context) -> Result<(
                 CreateButton::new(NEXT)
                     .label("次のページ")
                     .style(ButtonStyle::Secondary)
-                    .disabled(fields.len() <= 5),
+                    .disabled(fields.len() <= TASKS_PER_PAGE),
             ])])
             .ephemeral(true))
     };
@@ -207,7 +208,7 @@ async fn show_archived_tasks(interaction: ComponentInteraction, ctx: Context) ->
             .sorted_by_key(|e| e.datetime)
             .rev()
             .map(|task| task.to_field())
-            .skip(5 * page);
+            .skip(TASKS_PER_PAGE * page);
 
         Ok(CreateInteractionResponseMessage::new()
             .embed(
@@ -218,7 +219,7 @@ async fn show_archived_tasks(interaction: ComponentInteraction, ctx: Context) ->
                     } else {
                         ""
                     })
-                    .fields(fields.clone().take(5).collect::<Vec<_>>())
+                    .fields(fields.clone().take(TASKS_PER_PAGE).collect::<Vec<_>>())
                     .color(Color::DARK_BLUE),
             )
             .components(vec![CreateActionRow::Buttons(vec![
@@ -229,7 +230,7 @@ async fn show_archived_tasks(interaction: ComponentInteraction, ctx: Context) ->
                 CreateButton::new(NEXT)
                     .label("次のページ")
                     .style(ButtonStyle::Secondary)
-                    .disabled(fields.len() <= 5),
+                    .disabled(fields.len() <= TASKS_PER_PAGE),
             ])])
             .ephemeral(true))
     };
