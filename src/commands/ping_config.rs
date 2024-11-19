@@ -49,6 +49,8 @@ pub async fn set_ping_role(ctx: PoiseContext<'_>) -> Result<(), Error> {
         ]
     };
 
+    let mut select = None;
+
     let message = ctx
         .send(
             poise::CreateReply::default()
@@ -57,9 +59,10 @@ pub async fn set_ping_role(ctx: PoiseContext<'_>) -> Result<(), Error> {
                         .title("ロールを設定してください")
                         .color(Color::DARK_BLUE),
                 )
-                .components(components(None)),
+                .components(components(select)),
         )
         .await?;
+
     let mut interaction_stream = message
         .clone()
         .into_message()
@@ -68,26 +71,15 @@ pub async fn set_ping_role(ctx: PoiseContext<'_>) -> Result<(), Error> {
         .timeout(Duration::from_secs(60 * 30))
         .stream();
 
-    let mut select = None;
     let mut last_interaction = None;
     while let Some(interaction) = interaction_stream.next().await {
         match &interaction.data.kind {
             ComponentInteractionDataKind::RoleSelect { values } => {
                 select.replace(values[0]);
-                interaction
-                    .create_response(
-                        ctx,
-                        CreateInteractionResponse::UpdateMessage(
-                            CreateInteractionResponseMessage::default()
-                                .embed(
-                                    CreateEmbed::default()
-                                        .title("ロールを設定してください")
-                                        .color(Color::DARK_BLUE),
-                                )
-                                .components(components(select)),
-                        ),
-                    )
-                    .await?;
+                let response = CreateInteractionResponse::UpdateMessage(
+                    CreateInteractionResponseMessage::default().components(components(select)),
+                );
+                interaction.create_response(ctx, response).await?;
             }
             ComponentInteractionDataKind::Button => {
                 last_interaction.replace(interaction.clone());
@@ -102,21 +94,19 @@ pub async fn set_ping_role(ctx: PoiseContext<'_>) -> Result<(), Error> {
         .unwrap()
         .replace(select.context("No role selected")?);
     save(ctx.data())?;
+    let response = CreateInteractionResponse::UpdateMessage(
+        CreateInteractionResponseMessage::default()
+            .embed(
+                CreateEmbed::default()
+                    .title("ロールを設定しました")
+                    .description(format!("{}", select.unwrap().mention()))
+                    .color(Color::DARK_BLUE),
+            )
+            .components(vec![]),
+    );
     last_interaction
         .context("No interaction")?
-        .create_response(
-            &ctx,
-            CreateInteractionResponse::UpdateMessage(
-                CreateInteractionResponseMessage::default()
-                    .embed(
-                        CreateEmbed::default()
-                            .title("ロールを設定しました")
-                            .description(format!("{}", select.unwrap().mention()))
-                            .color(Color::DARK_BLUE),
-                    )
-                    .components(vec![]),
-            ),
-        )
+        .create_response(&ctx, response)
         .await?;
     Ok(())
 }

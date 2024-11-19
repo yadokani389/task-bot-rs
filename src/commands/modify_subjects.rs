@@ -77,6 +77,8 @@ pub async fn remove_subject(ctx: PoiseContext<'_>) -> Result<(), Error> {
         ]
     };
 
+    let mut select = None;
+
     let message = ctx
         .send(
             poise::CreateReply::default()
@@ -85,9 +87,10 @@ pub async fn remove_subject(ctx: PoiseContext<'_>) -> Result<(), Error> {
                         .title("削除したい教科を選択してください")
                         .color(Color::DARK_BLUE),
                 )
-                .components(components(None)),
+                .components(components(select.clone())),
         )
         .await?;
+
     let mut interaction_stream = message
         .clone()
         .into_message()
@@ -95,26 +98,17 @@ pub async fn remove_subject(ctx: PoiseContext<'_>) -> Result<(), Error> {
         .await_component_interaction(ctx)
         .timeout(Duration::from_secs(60 * 30))
         .stream();
-    let mut select = None;
+
     while let Some(interaction) = interaction_stream.next().await {
         match &interaction.data.kind {
             ComponentInteractionDataKind::StringSelect { values, .. } => {
                 select.replace(values[0].clone());
                 save(ctx.data())?;
-                interaction
-                    .create_response(
-                        &ctx,
-                        CreateInteractionResponse::UpdateMessage(
-                            CreateInteractionResponseMessage::new()
-                                .embed(
-                                    CreateEmbed::default()
-                                        .title("削除したい教科を選択してください")
-                                        .color(Color::DARK_BLUE),
-                                )
-                                .components(components(select.clone())),
-                        ),
-                    )
-                    .await?;
+                let response = CreateInteractionResponse::UpdateMessage(
+                    CreateInteractionResponseMessage::default()
+                        .components(components(select.clone())),
+                );
+                interaction.create_response(&ctx, response).await?;
             }
             ComponentInteractionDataKind::Button => {
                 let subject = select.context("Subject not selected")?;
@@ -138,12 +132,14 @@ pub async fn remove_subject(ctx: PoiseContext<'_>) -> Result<(), Error> {
                 save(ctx.data())?;
 
                 let response = CreateInteractionResponse::UpdateMessage(
-                    CreateInteractionResponseMessage::new().embed(
-                        CreateEmbed::default()
-                            .title("削除しました")
-                            .description(diff)
-                            .color(Color::DARK_GREEN),
-                    ),
+                    CreateInteractionResponseMessage::default()
+                        .embed(
+                            CreateEmbed::default()
+                                .title("削除しました")
+                                .description(diff)
+                                .color(Color::DARK_GREEN),
+                        )
+                        .components(vec![]),
                 );
 
                 interaction.create_response(&ctx, response).await?;

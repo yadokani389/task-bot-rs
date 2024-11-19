@@ -51,6 +51,9 @@ pub async fn add_suggest_time(
         ]
     };
 
+    let mut hour = None;
+    let mut minute = None;
+
     let message = ctx
         .send(
             poise::CreateReply::default()
@@ -59,7 +62,7 @@ pub async fn add_suggest_time(
                         .title(format!("よく使う時間({})を追加", label))
                         .color(Color::DARK_BLUE),
                 )
-                .components(components(None, None)),
+                .components(components(hour, minute)),
         )
         .await?;
 
@@ -70,9 +73,6 @@ pub async fn add_suggest_time(
         .await_component_interaction(ctx)
         .timeout(Duration::from_secs(60 * 30))
         .stream();
-
-    let mut hour = None;
-    let mut minute = None;
 
     while let Some(interaction) = interaction_stream.next().await {
         match &interaction.data.kind {
@@ -86,15 +86,11 @@ pub async fn add_suggest_time(
                     }
                     _ => {}
                 }
-                interaction
-                    .create_response(
-                        ctx,
-                        CreateInteractionResponse::UpdateMessage(
-                            CreateInteractionResponseMessage::default()
-                                .components(components(hour, minute)),
-                        ),
-                    )
-                    .await?;
+                let response = CreateInteractionResponse::UpdateMessage(
+                    CreateInteractionResponseMessage::default()
+                        .components(components(hour, minute)),
+                );
+                interaction.create_response(ctx, response).await?;
             }
             ComponentInteractionDataKind::Button => {
                 if interaction.data.custom_id == SUBMIT {
@@ -180,6 +176,8 @@ pub async fn remove_suggest_time(ctx: PoiseContext<'_>) -> Result<(), Error> {
         ]
     };
 
+    let mut time = None;
+
     let message = ctx
         .send(
             poise::CreateReply::default()
@@ -188,7 +186,7 @@ pub async fn remove_suggest_time(ctx: PoiseContext<'_>) -> Result<(), Error> {
                         .title("よく使う時間を削除")
                         .color(Color::DARK_BLUE),
                 )
-                .components(components(None)),
+                .components(components(time)),
         )
         .await?;
 
@@ -200,23 +198,16 @@ pub async fn remove_suggest_time(ctx: PoiseContext<'_>) -> Result<(), Error> {
         .timeout(Duration::from_secs(60 * 30))
         .stream();
 
-    let mut time = None;
-
     while let Some(interaction) = interaction_stream.next().await {
         match &interaction.data.kind {
             ComponentInteractionDataKind::StringSelect { values } => {
                 if interaction.data.custom_id == LABEL {
                     time.replace(serde_json::from_str(&values[0])?);
                 }
-                interaction
-                    .create_response(
-                        ctx,
-                        CreateInteractionResponse::UpdateMessage(
-                            CreateInteractionResponseMessage::default()
-                                .components(components(time)),
-                        ),
-                    )
-                    .await?;
+                let response = CreateInteractionResponse::UpdateMessage(
+                    CreateInteractionResponseMessage::default().components(components(time)),
+                );
+                interaction.create_response(ctx, response).await?;
             }
             ComponentInteractionDataKind::Button => {
                 if interaction.data.custom_id == SUBMIT {

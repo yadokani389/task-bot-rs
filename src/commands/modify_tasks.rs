@@ -59,21 +59,19 @@ pub async fn remove_task(ctx: PoiseContext<'_>) -> Result<(), Error> {
     }
     save(ctx.data())?;
 
+    let response = CreateInteractionResponse::UpdateMessage(
+        CreateInteractionResponseMessage::default()
+            .embed(
+                CreateEmbed::default()
+                    .title("削除しました")
+                    .fields(vec![task.to_field()])
+                    .color(Color::DARK_RED),
+            )
+            .components(vec![]),
+    );
     last_interaction
         .context("No interaction")?
-        .create_response(
-            ctx,
-            CreateInteractionResponse::UpdateMessage(
-                CreateInteractionResponseMessage::default()
-                    .embed(
-                        CreateEmbed::default()
-                            .title("削除しました")
-                            .fields(vec![task.to_field()])
-                            .color(Color::DARK_RED),
-                    )
-                    .components(vec![]),
-            ),
-        )
+        .create_response(ctx, response)
         .await?;
     Ok(())
 }
@@ -235,16 +233,12 @@ async fn create_task(
 
     let message = {
         if let Some(interaction) = interaction {
-            interaction
-                .create_response(
-                    ctx,
-                    CreateInteractionResponse::UpdateMessage(
-                        CreateInteractionResponseMessage::default()
-                            .embed(embed)
-                            .components(components(&defaults)),
-                    ),
-                )
-                .await?;
+            let response = CreateInteractionResponse::UpdateMessage(
+                CreateInteractionResponseMessage::default()
+                    .embed(embed)
+                    .components(components(&defaults)),
+            );
+            interaction.create_response(ctx, response).await?;
             interaction.get_response(ctx).await?
         } else {
             ctx.send(
@@ -285,15 +279,10 @@ async fn create_task(
                     }
                     _ => {}
                 }
-                interaction
-                    .create_response(
-                        &ctx,
-                        CreateInteractionResponse::UpdateMessage(
-                            CreateInteractionResponseMessage::default()
-                                .components(components(&task)),
-                        ),
-                    )
-                    .await?;
+                let response = CreateInteractionResponse::UpdateMessage(
+                    CreateInteractionResponseMessage::default().components(components(&task)),
+                );
+                interaction.create_response(&ctx, response).await?;
             }
             ComponentInteractionDataKind::Button => {
                 if interaction.data.custom_id == SUBMIT {
@@ -516,20 +505,17 @@ async fn create_task(
                 ]
             };
 
+            let mut hour = None;
+            let mut minute = None;
+
+            let response = CreateInteractionResponse::UpdateMessage(
+                CreateInteractionResponseMessage::default().components(components(hour, minute)),
+            );
             last_interaction
                 .clone()
                 .context("No interaction")?
-                .create_response(
-                    ctx,
-                    CreateInteractionResponse::UpdateMessage(
-                        CreateInteractionResponseMessage::default()
-                            .components(components(None, None)),
-                    ),
-                )
+                .create_response(ctx, response)
                 .await?;
-
-            let mut hour = None;
-            let mut minute = None;
 
             while let Some(interaction) = interaction_stream.next().await {
                 match &interaction.data.kind {
@@ -537,27 +523,19 @@ async fn create_task(
                         match interaction.data.custom_id.as_str() {
                             HOUR => {
                                 hour.replace(values[0].parse().unwrap());
-                                interaction
-                                    .create_response(
-                                        ctx,
-                                        CreateInteractionResponse::UpdateMessage(
-                                            CreateInteractionResponseMessage::default()
-                                                .components(components(hour, minute)),
-                                        ),
-                                    )
-                                    .await?;
+                                let response = CreateInteractionResponse::UpdateMessage(
+                                    CreateInteractionResponseMessage::default()
+                                        .components(components(hour, minute)),
+                                );
+                                interaction.create_response(ctx, response).await?;
                             }
                             MINUTE => {
                                 minute.replace(values[0].parse().unwrap());
-                                interaction
-                                    .create_response(
-                                        ctx,
-                                        CreateInteractionResponse::UpdateMessage(
-                                            CreateInteractionResponseMessage::default()
-                                                .components(components(hour, minute)),
-                                        ),
-                                    )
-                                    .await?;
+                                let response = CreateInteractionResponse::UpdateMessage(
+                                    CreateInteractionResponseMessage::default()
+                                        .components(components(hour, minute)),
+                                );
+                                interaction.create_response(ctx, response).await?;
                             }
                             _ => {}
                         }
@@ -693,15 +671,10 @@ async fn select_task(
                             .context("Invalid task")?,
                     );
                 }
-                interaction
-                    .create_response(
-                        &ctx,
-                        CreateInteractionResponse::UpdateMessage(
-                            CreateInteractionResponseMessage::default()
-                                .components(components(page, &task)),
-                        ),
-                    )
-                    .await?;
+                let response = CreateInteractionResponse::UpdateMessage(
+                    CreateInteractionResponseMessage::default().components(components(page, &task)),
+                );
+                interaction.create_response(&ctx, response).await?;
             }
             ComponentInteractionDataKind::Button => match interaction.data.custom_id.as_str() {
                 PREV => {
