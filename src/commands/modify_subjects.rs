@@ -51,15 +51,32 @@ pub async fn add_subjects(
 /// 教科を削除します。
 pub async fn remove_subject(ctx: PoiseContext<'_>) -> Result<(), Error> {
     const REMOVE_SUBJECT: &str = "remove_subject";
-    const REMOVE_SUBJECT_CONFIRM: &str = "remove_subject_confirm";
+    const SUBMIT: &str = "submit";
 
     let subjects = ctx.data().subjects.lock().unwrap().clone();
-    let subject_options = CreateSelectMenuKind::String {
-        options: subjects
-            .iter()
-            .map(|s| CreateSelectMenuOption::new(s, s))
-            .collect(),
+
+    let components = |selected_subject: Option<String>| {
+        let subject_options = CreateSelectMenuKind::String {
+            options: subjects
+                .iter()
+                .map(|s| {
+                    CreateSelectMenuOption::new(s, s)
+                        .default_selection(selected_subject == Some(s.clone()))
+                })
+                .collect(),
+        };
+
+        vec![
+            CreateActionRow::SelectMenu(
+                CreateSelectMenu::new(REMOVE_SUBJECT, subject_options)
+                    .placeholder("削除したい教科を選択してください"),
+            ),
+            CreateActionRow::Buttons(vec![CreateButton::new(SUBMIT)
+                .label("送信")
+                .disabled(selected_subject.is_none())]),
+        ]
     };
+
     let message = ctx
         .send(
             poise::CreateReply::default()
@@ -68,15 +85,7 @@ pub async fn remove_subject(ctx: PoiseContext<'_>) -> Result<(), Error> {
                         .title("削除したい教科を選択してください")
                         .color(Color::DARK_BLUE),
                 )
-                .components(vec![
-                    CreateActionRow::SelectMenu(CreateSelectMenu::new(
-                        REMOVE_SUBJECT,
-                        subject_options,
-                    )),
-                    CreateActionRow::Buttons(vec![CreateButton::new(REMOVE_SUBJECT_CONFIRM)
-                        .label("削除")
-                        .style(ButtonStyle::Danger)]),
-                ]),
+                .components(components(None)),
         )
         .await?;
     let mut interaction_stream = message
@@ -93,7 +102,18 @@ pub async fn remove_subject(ctx: PoiseContext<'_>) -> Result<(), Error> {
                 select.replace(values[0].clone());
                 save(ctx.data())?;
                 interaction
-                    .create_response(&ctx, CreateInteractionResponse::Acknowledge)
+                    .create_response(
+                        &ctx,
+                        CreateInteractionResponse::UpdateMessage(
+                            CreateInteractionResponseMessage::new()
+                                .embed(
+                                    CreateEmbed::default()
+                                        .title("削除したい教科を選択してください")
+                                        .color(Color::DARK_BLUE),
+                                )
+                                .components(components(select.clone())),
+                        ),
+                    )
                     .await?;
             }
             ComponentInteractionDataKind::Button => {

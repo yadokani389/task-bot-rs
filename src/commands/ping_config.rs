@@ -32,6 +32,23 @@ pub async fn set_ping_channel(ctx: PoiseContext<'_>) -> Result<(), Error> {
 pub async fn set_ping_role(ctx: PoiseContext<'_>) -> Result<(), Error> {
     const SET_PING_ROLE: &str = "set_ping_role";
 
+    let components = |role: Option<RoleId>| {
+        vec![
+            CreateActionRow::SelectMenu(
+                CreateSelectMenu::new(
+                    SET_PING_ROLE,
+                    CreateSelectMenuKind::Role {
+                        default_roles: role.map(|r| vec![r]),
+                    },
+                )
+                .placeholder("ロールを選択してください"),
+            ),
+            CreateActionRow::Buttons(vec![CreateButton::new("submit")
+                .label("送信")
+                .disabled(role.is_none())]),
+        ]
+    };
+
     let message = ctx
         .send(
             poise::CreateReply::default()
@@ -40,20 +57,7 @@ pub async fn set_ping_role(ctx: PoiseContext<'_>) -> Result<(), Error> {
                         .title("ロールを設定してください")
                         .color(Color::DARK_BLUE),
                 )
-                .components(vec![
-                    CreateActionRow::SelectMenu(
-                        CreateSelectMenu::new(
-                            SET_PING_ROLE,
-                            CreateSelectMenuKind::Role {
-                                default_roles: None,
-                            },
-                        )
-                        .placeholder("ロールを選択してください"),
-                    ),
-                    CreateActionRow::Buttons(vec![CreateButton::new("submit")
-                        .label("送信")
-                        .style(ButtonStyle::Primary)]),
-                ]),
+                .components(components(None)),
         )
         .await?;
     let mut interaction_stream = message
@@ -71,7 +75,18 @@ pub async fn set_ping_role(ctx: PoiseContext<'_>) -> Result<(), Error> {
             ComponentInteractionDataKind::RoleSelect { values } => {
                 select.replace(values[0]);
                 interaction
-                    .create_response(ctx, CreateInteractionResponse::Acknowledge)
+                    .create_response(
+                        ctx,
+                        CreateInteractionResponse::UpdateMessage(
+                            CreateInteractionResponseMessage::default()
+                                .embed(
+                                    CreateEmbed::default()
+                                        .title("ロールを設定してください")
+                                        .color(Color::DARK_BLUE),
+                                )
+                                .components(components(select)),
+                        ),
+                    )
                     .await?;
             }
             ComponentInteractionDataKind::Button => {
