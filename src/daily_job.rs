@@ -36,48 +36,36 @@ async fn job(ctx: Context) -> Result<(), Error> {
     let ping_role = (*data.ping_role.lock().unwrap()).context("Ping role not set")?;
     let tasks = data.tasks.lock().unwrap().clone();
 
-    println!(
-        "Searching tasks: from {} to {}",
-        (Local::now() + Duration::days(1))
-            .with_time(NaiveTime::from_hms_opt(0, 0, 0).unwrap())
-            .unwrap(),
-        (Local::now() + Duration::days(2))
-            .with_time(NaiveTime::from_hms_opt(0, 0, 0).unwrap())
-            .unwrap()
-    );
+    let from = (Local::now() + Duration::days(1))
+        .with_time(NaiveTime::from_hms_opt(0, 0, 0).unwrap())
+        .unwrap();
+    let to = (Local::now() + Duration::days(2))
+        .with_time(NaiveTime::from_hms_opt(0, 0, 0).unwrap())
+        .unwrap();
+
+    println!("Searching tasks: from {} to {}", from, to);
 
     let fields = tasks
         .iter()
-        .filter(|task| {
-            (Local::now() + Duration::days(1))
-                .with_time(NaiveTime::from_hms_opt(0, 0, 0).unwrap())
-                .unwrap()
-                <= task.datetime
-                && task.datetime
-                    < (Local::now() + Duration::days(2))
-                        .with_time(NaiveTime::from_hms_opt(0, 0, 0).unwrap())
-                        .unwrap()
-        })
+        .filter(|task| from < task.datetime && task.datetime <= to)
         .sorted_by_key(|task| task.datetime)
         .map(|task| task.to_field());
 
-    if fields.clone().count() == 0 {
-        return Ok(());
+    if fields.len() > 0 {
+        ping_channel
+            .send_message(
+                ctx,
+                CreateMessage::new()
+                    .content(format!("{}", ping_role.mention()))
+                    .embed(
+                        CreateEmbed::default()
+                            .title("タスク通知")
+                            .description("明日のタスクをお知らせします！")
+                            .fields(fields)
+                            .color(Color::RED),
+                    ),
+            )
+            .await?;
     }
-
-    ping_channel
-        .send_message(
-            ctx,
-            CreateMessage::new()
-                .content(format!("{}", ping_role.mention()))
-                .embed(
-                    CreateEmbed::default()
-                        .title("タスク通知")
-                        .description("明日のタスクをお知らせします！")
-                        .fields(fields)
-                        .color(Color::RED),
-                ),
-        )
-        .await?;
     Ok(())
 }
