@@ -60,9 +60,15 @@ impl Category {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Subject {
+    Value(String),
+    Other,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Task {
     pub category: Category,
-    pub subject: String,
+    pub subject: Subject,
     pub details: String,
     pub datetime: DateTime<Local>,
 }
@@ -71,9 +77,12 @@ impl Task {
     pub fn to_field(&self) -> (String, String, bool) {
         (
             format!(
-                "【{}】{} {}",
+                "【{}】{}{}",
                 String::from(self.category),
-                self.subject,
+                match &self.subject {
+                    Subject::Value(s) => format!("{} ", s),
+                    Subject::Other => "".to_string(),
+                },
                 self.details
             ),
             format!(
@@ -93,7 +102,7 @@ impl Task {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct PartialTask {
     pub category: Option<Category>,
-    pub subject: Option<String>,
+    pub subject: Option<Subject>,
     pub details: Option<String>,
     pub date: Option<NaiveDate>,
     pub time: Option<NaiveTime>,

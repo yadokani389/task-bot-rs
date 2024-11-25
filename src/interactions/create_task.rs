@@ -9,6 +9,7 @@ use poise::Modal;
 use crate::interactions::select_date;
 use crate::interactions::select_time;
 use crate::utils::format_date;
+use crate::Subject;
 use crate::{Category, PartialTask, PoiseContext, Task};
 
 pub async fn create_task(
@@ -39,9 +40,19 @@ pub async fn create_task(
             options: subjects
                 .iter()
                 .map(|s| {
-                    CreateSelectMenuOption::new(s, s)
-                        .default_selection(task.subject == Some(s.to_string()))
+                    CreateSelectMenuOption::new(
+                        s,
+                        serde_json::to_string(&Subject::Value(s.to_string())).unwrap(),
+                    )
+                    .default_selection(task.subject == Some(Subject::Value(s.to_string())))
                 })
+                .chain(iter::once(
+                    CreateSelectMenuOption::new(
+                        "(教科を指定しない)",
+                        serde_json::to_string(&Subject::Other).unwrap(),
+                    )
+                    .default_selection(task.subject == Some(Subject::Other)),
+                ))
                 .collect(),
         };
         let date_options = CreateSelectMenuKind::String {
@@ -143,7 +154,7 @@ pub async fn create_task(
                         task.category.replace(values[0].clone().into());
                     }
                     SUBJECT => {
-                        task.subject.replace(values[0].clone());
+                        task.subject.replace(serde_json::from_str(&values[0])?);
                     }
                     DATE => {
                         task.date = serde_json::from_str(&values[0])?;
