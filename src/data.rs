@@ -163,6 +163,6 @@ pub fn save(data: &Data) -> Result<(), Error> {
 
 pub fn load() -> Result<Data, Error> {
     let data = fs::read_to_string(DATA_FILE)?;
-    let data = serde_json::from_str(&data)?;
+    let data = serde_json::from_str(&data).expect("Failed to parse data.json");
     Ok(data)
 }
