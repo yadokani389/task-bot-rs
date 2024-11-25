@@ -99,6 +99,7 @@ pub async fn remove_subject(ctx: PoiseContext<'_>) -> Result<(), Error> {
         .timeout(Duration::from_secs(60 * 30))
         .stream();
 
+    let mut last_interaction = None;
     while let Some(interaction) = interaction_stream.next().await {
         match &interaction.data.kind {
             ComponentInteractionDataKind::StringSelect { values, .. } => {
@@ -111,42 +112,49 @@ pub async fn remove_subject(ctx: PoiseContext<'_>) -> Result<(), Error> {
                 interaction.create_response(&ctx, response).await?;
             }
             ComponentInteractionDataKind::Button => {
-                let subject = select.context("Subject not selected")?;
-                let diff = format!(
-                    "```diff\n{}\n```",
-                    ctx.data()
-                        .subjects
-                        .lock()
-                        .unwrap()
-                        .iter()
-                        .map(|s| format!("{}{}", if s == &subject { "- " } else { "" }, s))
-                        .collect::<Vec<_>>()
-                        .join("\n")
-                );
-
-                ctx.data()
-                    .subjects
-                    .lock()
-                    .unwrap()
-                    .retain(|s| s != &subject);
-                save(ctx.data())?;
-
-                let response = CreateInteractionResponse::UpdateMessage(
-                    CreateInteractionResponseMessage::default()
-                        .embed(
-                            CreateEmbed::default()
-                                .title("削除しました")
-                                .description(diff)
-                                .color(Color::DARK_GREEN),
-                        )
-                        .components(vec![]),
-                );
-
-                interaction.create_response(&ctx, response).await?;
-                break;
+                if interaction.data.custom_id == SUBMIT {
+                    last_interaction.replace(interaction);
+                    break;
+                }
             }
             _ => {}
         }
     }
+
+    let subject = select.context("Subject not selected")?;
+    let diff = format!(
+        "```diff\n{}\n```",
+        ctx.data()
+            .subjects
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|s| format!("{}{}", if s == &subject { "- " } else { "" }, s))
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
+
+    ctx.data()
+        .subjects
+        .lock()
+        .unwrap()
+        .retain(|s| s != &subject);
+    save(ctx.data())?;
+
+    let response = CreateInteractionResponse::UpdateMessage(
+        CreateInteractionResponseMessage::default()
+            .embed(
+                CreateEmbed::default()
+                    .title("削除しました")
+                    .description(diff)
+                    .color(Color::DARK_GREEN),
+            )
+            .components(vec![]),
+    );
+
+    last_interaction
+        .context("No interaction")?
+        .create_response(&ctx, response)
+        .await?;
     Ok(())
 }

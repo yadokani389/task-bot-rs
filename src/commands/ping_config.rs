@@ -31,6 +31,7 @@ pub async fn set_ping_channel(ctx: PoiseContext<'_>) -> Result<(), Error> {
 /// タスク通知を送るロールを設定します。
 pub async fn set_ping_role(ctx: PoiseContext<'_>) -> Result<(), Error> {
     const SET_PING_ROLE: &str = "set_ping_role";
+    const SUBMIT: &str = "submit";
 
     let components = |role: Option<RoleId>| {
         vec![
@@ -44,6 +45,7 @@ pub async fn set_ping_role(ctx: PoiseContext<'_>) -> Result<(), Error> {
                 .placeholder("ロールを選択してください"),
             ),
             CreateActionRow::Buttons(vec![CreateButton::new("submit")
+                .custom_id(SUBMIT)
                 .label("送信")
                 .disabled(role.is_none())]),
         ]
@@ -82,8 +84,10 @@ pub async fn set_ping_role(ctx: PoiseContext<'_>) -> Result<(), Error> {
                 interaction.create_response(ctx, response).await?;
             }
             ComponentInteractionDataKind::Button => {
-                last_interaction.replace(interaction.clone());
-                break;
+                if interaction.data.custom_id == SUBMIT {
+                    last_interaction.replace(interaction);
+                    break;
+                }
             }
             _ => {}
         }

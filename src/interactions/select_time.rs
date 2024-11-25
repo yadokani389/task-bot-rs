@@ -3,7 +3,7 @@ use std::iter;
 use anyhow::{Context as _, Error};
 use chrono::{Duration, NaiveTime};
 use futures::StreamExt;
-use poise::{serenity_prelude::*, CreateReply};
+use poise::serenity_prelude::*;
 
 use crate::PoiseContext;
 
@@ -62,9 +62,9 @@ pub async fn select_time(
     } else {
         ctx.send(
             if let Some(embed) = embed {
-                CreateReply::default().embed(embed)
+                poise::CreateReply::default().embed(embed)
             } else {
-                CreateReply::default()
+                poise::CreateReply::default()
             }
             .components(components(hour, minute)),
         )
