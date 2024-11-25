@@ -6,7 +6,7 @@ use tokio::time::{sleep_until, Instant};
 
 use crate::load;
 
-pub async fn run_daily_job(ctx: Context) {
+pub async fn wait(ctx: Context) {
     loop {
         let now = Local::now();
         let target_time = {
@@ -26,11 +26,11 @@ pub async fn run_daily_job(ctx: Context) {
         println!("Sleeping for {} seconds", sleep_duration.num_seconds());
 
         sleep_until(Instant::now() + sleep_duration.to_std().unwrap()).await;
-        job(ctx.clone()).await.expect("Failed to run daily job");
+        notify(ctx.clone()).await.expect("Failed to run daily job");
     }
 }
 
-async fn job(ctx: Context) -> Result<(), Error> {
+async fn notify(ctx: Context) -> Result<(), Error> {
     let data = load()?;
     let ping_channel = (*data.ping_channel.lock().unwrap()).context("Ping channel not set")?;
     let ping_role = (*data.ping_role.lock().unwrap()).context("Ping role not set")?;

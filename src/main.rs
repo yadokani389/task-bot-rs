@@ -6,7 +6,9 @@ mod data;
 use data::*;
 mod commands;
 use commands::*;
-mod daily_job;
+mod interactions;
+mod notify;
+mod utils;
 
 pub type PoiseContext<'a> = poise::Context<'a, Data, Error>;
 
@@ -35,7 +37,7 @@ async fn event_handler(
                 save(data)?;
             }
         }
-        tokio::spawn(daily_job::run_daily_job(ctx.clone()));
+        tokio::spawn(notify::wait(ctx.clone()));
         if let Some(panel_message) = &*data.panel_message.lock().unwrap() {
             data.panel_listener.lock().unwrap().replace(tokio::spawn(
                 commands::panel::listen_panel_interactions(ctx.clone(), panel_message.clone()),
