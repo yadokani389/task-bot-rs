@@ -104,7 +104,6 @@ pub async fn remove_subject(ctx: PoiseContext<'_>) -> Result<(), Error> {
         match &interaction.data.kind {
             ComponentInteractionDataKind::StringSelect { values, .. } => {
                 select.replace(values[0].clone());
-                save(ctx.data())?;
                 let response = CreateInteractionResponse::UpdateMessage(
                     CreateInteractionResponseMessage::default()
                         .components(components(select.clone())),
@@ -156,5 +155,6 @@ pub async fn remove_subject(ctx: PoiseContext<'_>) -> Result<(), Error> {
         .context("No interaction")?
         .create_response(&ctx, response)
         .await?;
+
     Ok(())
 }
