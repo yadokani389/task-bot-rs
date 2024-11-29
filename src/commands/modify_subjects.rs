@@ -4,7 +4,7 @@ use anyhow::{Context as _, Error};
 use futures::StreamExt;
 use poise::serenity_prelude::*;
 
-use crate::{save, PoiseContext};
+use crate::{data, PoiseContext};
 
 #[poise::command(slash_command)]
 /// 教科を追加します。
@@ -22,7 +22,7 @@ pub async fn add_subjects(
         .lock()
         .unwrap()
         .extend(subjects.clone().into_iter());
-    save(ctx.data())?;
+    data::save(ctx.data())?;
 
     let diff = format!(
         "```diff\n{}\n```",
@@ -140,7 +140,7 @@ pub async fn remove_subject(ctx: PoiseContext<'_>) -> Result<(), Error> {
         .lock()
         .unwrap()
         .retain(|s| s != &subject);
-    save(ctx.data())?;
+    data::save(ctx.data())?;
 
     let response = CreateInteractionResponse::UpdateMessage(
         CreateInteractionResponseMessage::default()

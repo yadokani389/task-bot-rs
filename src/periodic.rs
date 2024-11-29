@@ -7,7 +7,7 @@ use tokio::{
     time::{sleep_until, Instant},
 };
 
-use crate::{load, utils::format_datetime, DATA_FILE};
+use crate::{data, utils::format_datetime};
 
 pub async fn wait(ctx: Context) {
     loop {
@@ -35,7 +35,7 @@ pub async fn wait(ctx: Context) {
 }
 
 async fn notify(ctx: Context) -> Result<(), Error> {
-    let data = load()?;
+    let data = data::load()?;
     let ping_channel = (*data.ping_channel.lock().unwrap()).context("Ping channel not set")?;
     let ping_role = (*data.ping_role.lock().unwrap()).context("Ping role not set")?;
     let tasks = data.tasks.lock().unwrap().clone();
@@ -75,7 +75,7 @@ async fn notify(ctx: Context) -> Result<(), Error> {
 }
 
 async fn backup(ctx: Context) -> Result<(), Error> {
-    let data = load()?;
+    let data = data::load()?;
     let log_channel = (*data.log_channel.lock().unwrap()).context("Log channel not set")?;
 
     log_channel
@@ -83,7 +83,7 @@ async fn backup(ctx: Context) -> Result<(), Error> {
             ctx,
             vec![
                 CreateAttachment::file(
-                    &File::open(DATA_FILE).await?,
+                    &File::open(data::FILE_PATH).await?,
                     format!("{}.json", Local::now().timestamp()),
                 )
                 .await?,

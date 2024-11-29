@@ -178,16 +178,16 @@ pub struct Data {
     pub panel_listener: Mutex<Option<tokio::task::JoinHandle<Result<(), Error>>>>,
 }
 
-pub const DATA_FILE: &str = "data.json";
+pub const FILE_PATH: &str = "data.json";
 
 pub fn save(data: &Data) -> Result<(), Error> {
     let data = serde_json::to_string(data)?;
-    fs::write(DATA_FILE, data)?;
+    fs::write(FILE_PATH, data)?;
     Ok(())
 }
 
 pub fn load() -> Result<Data, Error> {
-    let data = fs::read_to_string(DATA_FILE)?;
+    let data = fs::read_to_string(FILE_PATH)?;
     let data = serde_json::from_str(&data).expect("Failed to parse data.json");
     Ok(data)
 }

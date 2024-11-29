@@ -2,7 +2,7 @@ use anyhow::Error;
 
 use poise::serenity_prelude::*;
 
-use crate::{save, PoiseContext};
+use crate::{data, PoiseContext};
 
 #[poise::command(slash_command)]
 /// 管理者向けログを送るチャンネルを設定します。
@@ -12,7 +12,7 @@ pub async fn set_log_channel(ctx: PoiseContext<'_>) -> Result<(), Error> {
         .lock()
         .unwrap()
         .replace(ctx.channel_id());
-    save(ctx.data())?;
+    data::save(ctx.data())?;
 
     ctx.send(
         poise::CreateReply::default().embed(

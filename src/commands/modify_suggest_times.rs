@@ -6,7 +6,7 @@ use chrono::NaiveTime;
 use futures::StreamExt;
 use poise::serenity_prelude::*;
 
-use crate::{interactions::select_time, save, PoiseContext};
+use crate::{data, interactions::select_time, PoiseContext};
 
 #[poise::command(slash_command)]
 /// よく使う時間を追加します。
@@ -30,7 +30,7 @@ pub async fn add_suggest_time(
         .lock()
         .unwrap()
         .insert(time, label.clone());
-    save(ctx.data())?;
+    data::save(ctx.data())?;
 
     let title = format!("{}({})を追加しました", label, time.format("%H:%M"));
     let diff = format!(
@@ -167,7 +167,7 @@ pub async fn remove_suggest_time(ctx: PoiseContext<'_>) -> Result<(), Error> {
     );
 
     ctx.data().suggest_times.lock().unwrap().remove(&time);
-    save(ctx.data())?;
+    data::save(ctx.data())?;
 
     let response = CreateInteractionResponse::UpdateMessage(
         CreateInteractionResponseMessage::default()

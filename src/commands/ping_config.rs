@@ -4,7 +4,7 @@ use anyhow::{Context as _, Error};
 use futures::StreamExt;
 use poise::serenity_prelude::*;
 
-use crate::{save, PoiseContext};
+use crate::{data, PoiseContext};
 
 #[poise::command(slash_command)]
 /// タスク通知を送るチャンネルを設定します。
@@ -14,7 +14,7 @@ pub async fn set_ping_channel(ctx: PoiseContext<'_>) -> Result<(), Error> {
         .lock()
         .unwrap()
         .replace(ctx.channel_id());
-    save(ctx.data())?;
+    data::save(ctx.data())?;
 
     ctx.send(
         poise::CreateReply::default().embed(
@@ -99,7 +99,7 @@ pub async fn set_ping_role(ctx: PoiseContext<'_>) -> Result<(), Error> {
         .lock()
         .unwrap()
         .replace(select.context("No role selected")?);
-    save(ctx.data())?;
+    data::save(ctx.data())?;
 
     let response = CreateInteractionResponse::UpdateMessage(
         CreateInteractionResponseMessage::default()

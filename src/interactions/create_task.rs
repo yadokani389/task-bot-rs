@@ -6,11 +6,11 @@ use futures::StreamExt;
 use poise::serenity_prelude::*;
 use poise::Modal;
 
-use crate::interactions::select_date;
-use crate::interactions::select_time;
-use crate::utils::format_date;
-use crate::Subject;
-use crate::{Category, PartialTask, PoiseContext, Task};
+use crate::{
+    interactions::{select_date, select_time},
+    utils::format_date,
+    Category, PartialTask, PoiseContext, Subject, Task,
+};
 
 pub async fn create_task(
     ctx: PoiseContext<'_>,

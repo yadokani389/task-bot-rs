@@ -1,8 +1,11 @@
 use anyhow::{Context as _, Error};
 use poise::serenity_prelude::*;
 
-use crate::interactions::{create_task, select_task};
-use crate::{save, PartialTask, PoiseContext};
+use crate::{
+    data,
+    interactions::{create_task, select_task},
+    PartialTask, PoiseContext,
+};
 
 #[poise::command(slash_command)]
 /// タスクを追加します。
@@ -18,7 +21,7 @@ pub async fn add_task(ctx: PoiseContext<'_>) -> Result<(), Error> {
     .await?;
 
     ctx.data().tasks.lock().unwrap().insert(task.clone());
-    save(ctx.data())?;
+    data::save(ctx.data())?;
 
     message
         .edit(
@@ -52,7 +55,7 @@ pub async fn remove_task(ctx: PoiseContext<'_>) -> Result<(), Error> {
         let mut tasks = ctx.data().tasks.lock().unwrap();
         tasks.remove(&task);
     }
-    save(ctx.data())?;
+    data::save(ctx.data())?;
 
     let response = CreateInteractionResponse::UpdateMessage(
         CreateInteractionResponseMessage::default()
@@ -98,7 +101,7 @@ pub async fn edit_task(ctx: PoiseContext<'_>) -> Result<(), Error> {
         tasks.remove(&task);
         tasks.insert(modified_task.clone());
     }
-    save(ctx.data())?;
+    data::save(ctx.data())?;
 
     message
         .edit(

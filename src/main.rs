@@ -1,11 +1,10 @@
 use anyhow::Error;
+use data::{Category, Data, PartialTask, Subject, Task};
 use dotenvy::dotenv;
 use poise::serenity_prelude::*;
 
-mod data;
-use data::*;
 mod commands;
-use commands::*;
+mod data;
 mod interactions;
 mod periodic;
 mod utils;
@@ -20,7 +19,7 @@ async fn event_handler(
 ) -> Result<(), Error> {
     if let FullEvent::Ready { data_about_bot } = event {
         println!("Logged in as {}", data_about_bot.user.name);
-        match load() {
+        match data::load() {
             Ok(restore) => {
                 *data.tasks.lock().unwrap() = restore.tasks.lock().unwrap().clone();
                 *data.subjects.lock().unwrap() = restore.subjects.lock().unwrap().clone();
@@ -33,8 +32,8 @@ async fn event_handler(
                 println!("{:#?}", data);
             }
             Err(_) => {
-                println!("Note: {} not found, using default data", DATA_FILE);
-                save(data)?;
+                println!("Note: {} not found, using default data", data::FILE_PATH);
+                data::save(data)?;
             }
         }
         tokio::spawn(periodic::wait(ctx.clone()));
@@ -49,6 +48,8 @@ async fn event_handler(
 
 #[tokio::main]
 async fn main() {
+    use commands::*;
+
     dotenv().expect(".env file not found");
 
     let token = std::env::var("DISCORD_TOKEN").expect("Missing DISCORD_TOKEN");

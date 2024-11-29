@@ -6,7 +6,7 @@ use itertools::Itertools;
 use poise::serenity_prelude::*;
 use {futures::StreamExt, Mentionable};
 
-use crate::{load, save, PoiseContext};
+use crate::{data, PoiseContext};
 
 const SHOW_TASKS: &str = "show_tasks";
 const SHOW_ARCHIVED_TASKS: &str = "show_archived_tasks";
@@ -40,7 +40,7 @@ pub async fn deploy_panel(ctx: PoiseContext<'_>) -> Result<(), Error> {
     let id_pair = (message.id, message.channel_id);
 
     ctx.data().panel_message.lock().unwrap().replace(id_pair);
-    save(ctx.data())?;
+    data::save(ctx.data())?;
 
     ctx.data()
         .panel_listener
@@ -95,7 +95,7 @@ pub async fn listen_panel_interactions(
 }
 
 async fn log(ctx: &Context, user: &User, message: impl Into<String>) -> Result<(), Error> {
-    let log_channel = *load()?.log_channel.lock().unwrap();
+    let log_channel = *data::load()?.log_channel.lock().unwrap();
 
     log_channel
         .context("log channel not set")?
@@ -125,7 +125,7 @@ async fn show_tasks(interaction: ComponentInteraction, ctx: Context) -> Result<(
 
     let mut page = 0;
     let message = |page: usize| -> Result<_, Error> {
-        let tasks = load()?.tasks.lock().unwrap().clone();
+        let tasks = data::load()?.tasks.lock().unwrap().clone();
         let fields = tasks
             .iter()
             .filter(|e| Local::now() <= e.datetime)
@@ -212,7 +212,7 @@ async fn show_archived_tasks(interaction: ComponentInteraction, ctx: Context) ->
 
     let mut page = 0;
     let message = |page: usize| -> Result<_, Error> {
-        let tasks = load()?.tasks.lock().unwrap().clone();
+        let tasks = data::load()?.tasks.lock().unwrap().clone();
         let fields = tasks
             .iter()
             .filter(|e| Local::now() > e.datetime)
