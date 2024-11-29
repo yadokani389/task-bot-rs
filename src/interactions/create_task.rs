@@ -32,7 +32,8 @@ pub async fn create_task(
             options: Category::VALUES
                 .iter()
                 .map(|&c| {
-                    CreateSelectMenuOption::new(c, c).default_selection(task.category == Some(c))
+                    CreateSelectMenuOption::new(c, serde_json::to_string(&c).unwrap())
+                        .default_selection(task.category == Some(c))
                 })
                 .collect(),
         };
@@ -151,7 +152,7 @@ pub async fn create_task(
             ComponentInteractionDataKind::StringSelect { values } => {
                 match interaction.data.custom_id.as_str() {
                     CATEGORY => {
-                        task.category.replace(values[0].clone().into());
+                        task.category.replace(serde_json::from_str(&values[0])?);
                     }
                     SUBJECT => {
                         task.subject.replace(serde_json::from_str(&values[0])?);

@@ -1,7 +1,5 @@
 use std::{
-    collections::{BTreeMap, BTreeSet},
-    fs,
-    sync::Mutex,
+    collections::{BTreeMap, BTreeSet}, fmt::Display, fs, sync::Mutex
 };
 
 use anyhow::{Context, Error};
@@ -36,16 +34,9 @@ impl From<Category> for String {
     }
 }
 
-impl From<String> for Category {
-    fn from(category: String) -> Self {
-        match category.as_str() {
-            "イベント" => Category::Event,
-            "テスト" => Category::Exam,
-            "宿題" => Category::Homework,
-            "持ち物" => Category::Belongings,
-            "その他" => Category::Other,
-            _ => Category::Other,
-        }
+impl Display for Category {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&String::from(*self))
     }
 }
 
@@ -103,7 +94,7 @@ impl Task {
         (
             format!(
                 "【{}】{}{}",
-                String::from(self.category),
+                self.category,
                 match &self.subject {
                     Subject::Set(s) => format!("{} ", s),
                     Subject::Unset => "".to_string(),
