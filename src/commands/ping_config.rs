@@ -15,6 +15,7 @@ pub async fn set_ping_channel(ctx: PoiseContext<'_>) -> Result<(), Error> {
         .unwrap()
         .replace(ctx.channel_id());
     save(ctx.data())?;
+
     ctx.send(
         poise::CreateReply::default().embed(
             CreateEmbed::default()
@@ -24,6 +25,7 @@ pub async fn set_ping_channel(ctx: PoiseContext<'_>) -> Result<(), Error> {
         ),
     )
     .await?;
+
     Ok(())
 }
 
@@ -98,6 +100,7 @@ pub async fn set_ping_role(ctx: PoiseContext<'_>) -> Result<(), Error> {
         .unwrap()
         .replace(select.context("No role selected")?);
     save(ctx.data())?;
+
     let response = CreateInteractionResponse::UpdateMessage(
         CreateInteractionResponseMessage::default()
             .embed(
@@ -108,9 +111,11 @@ pub async fn set_ping_role(ctx: PoiseContext<'_>) -> Result<(), Error> {
             )
             .components(vec![]),
     );
+
     last_interaction
         .context("No interaction")?
         .create_response(&ctx, response)
         .await?;
+
     Ok(())
 }

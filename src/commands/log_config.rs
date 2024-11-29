@@ -13,6 +13,7 @@ pub async fn set_log_channel(ctx: PoiseContext<'_>) -> Result<(), Error> {
         .unwrap()
         .replace(ctx.channel_id());
     save(ctx.data())?;
+
     ctx.send(
         poise::CreateReply::default().embed(
             CreateEmbed::default()
@@ -22,5 +23,6 @@ pub async fn set_log_channel(ctx: PoiseContext<'_>) -> Result<(), Error> {
         ),
     )
     .await?;
+
     Ok(())
 }

@@ -38,12 +38,10 @@ pub async fn deploy_panel(ctx: PoiseContext<'_>) -> Result<(), Error> {
         .await?;
 
     let id_pair = (message.id, message.channel_id);
-    ctx.data()
-        .panel_message
-        .lock()
-        .unwrap()
-        .replace(id_pair);
+
+    ctx.data().panel_message.lock().unwrap().replace(id_pair);
     save(ctx.data())?;
+
     ctx.data()
         .panel_listener
         .lock()
@@ -58,6 +56,7 @@ pub async fn deploy_panel(ctx: PoiseContext<'_>) -> Result<(), Error> {
             ctx.serenity_context().clone(),
             id_pair,
         )));
+
     ctx.send(
         poise::CreateReply::default()
             .embed(
@@ -68,10 +67,14 @@ pub async fn deploy_panel(ctx: PoiseContext<'_>) -> Result<(), Error> {
             .ephemeral(true),
     )
     .await?;
+
     Ok(())
 }
 
-pub async fn listen_panel_interactions(ctx: Context, id_pair: (MessageId, ChannelId)) -> Result<(), Error> {
+pub async fn listen_panel_interactions(
+    ctx: Context,
+    id_pair: (MessageId, ChannelId),
+) -> Result<(), Error> {
     let (message_id, channel_id) = id_pair;
     let message = channel_id.message(&ctx, message_id).await?;
 
@@ -87,6 +90,7 @@ pub async fn listen_panel_interactions(ctx: Context, id_pair: (MessageId, Channe
             _ => {}
         }
     }
+
     Ok(())
 }
 
@@ -111,6 +115,7 @@ async fn log(ctx: &Context, user: &User, message: impl Into<String>) -> Result<(
             ),
         )
         .await?;
+
     Ok(())
 }
 
@@ -197,6 +202,7 @@ async fn show_tasks(interaction: ComponentInteraction, ctx: Context) -> Result<(
             _ => {}
         }
     }
+
     Ok(())
 }
 
@@ -284,5 +290,6 @@ async fn show_archived_tasks(interaction: ComponentInteraction, ctx: Context) ->
             _ => {}
         }
     }
+
     Ok(())
 }

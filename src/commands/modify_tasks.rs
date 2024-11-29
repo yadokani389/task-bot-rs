@@ -19,6 +19,7 @@ pub async fn add_task(ctx: PoiseContext<'_>) -> Result<(), Error> {
 
     ctx.data().tasks.lock().unwrap().insert(task.clone());
     save(ctx.data())?;
+
     message
         .edit(
             ctx,
@@ -32,6 +33,7 @@ pub async fn add_task(ctx: PoiseContext<'_>) -> Result<(), Error> {
                 .components(vec![]),
         )
         .await?;
+
     Ok(())
 }
 
@@ -66,6 +68,7 @@ pub async fn remove_task(ctx: PoiseContext<'_>) -> Result<(), Error> {
         .context("No interaction")?
         .create_response(ctx, response)
         .await?;
+
     Ok(())
 }
 
@@ -114,5 +117,6 @@ pub async fn edit_task(ctx: PoiseContext<'_>) -> Result<(), Error> {
                 .components(vec![]),
         )
         .await?;
+
     Ok(())
 }

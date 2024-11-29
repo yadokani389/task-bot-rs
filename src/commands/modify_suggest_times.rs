@@ -166,6 +166,9 @@ pub async fn remove_suggest_time(ctx: PoiseContext<'_>) -> Result<(), Error> {
             .join("\n")
     );
 
+    ctx.data().suggest_times.lock().unwrap().remove(&time);
+    save(ctx.data())?;
+
     let response = CreateInteractionResponse::UpdateMessage(
         CreateInteractionResponseMessage::default()
             .embed(
@@ -181,8 +184,6 @@ pub async fn remove_suggest_time(ctx: PoiseContext<'_>) -> Result<(), Error> {
         .context("No interaction")?
         .create_response(ctx, response)
         .await?;
-    ctx.data().suggest_times.lock().unwrap().remove(&time);
-    save(ctx.data())?;
 
     Ok(())
 }

@@ -16,6 +16,7 @@ pub async fn add_subjects(
         .split(',')
         .map(|s| s.trim().to_string())
         .collect::<Vec<_>>();
+
     ctx.data()
         .subjects
         .lock()
@@ -44,6 +45,7 @@ pub async fn add_subjects(
         ),
     )
     .await?;
+
     Ok(())
 }
 

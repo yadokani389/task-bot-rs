@@ -85,12 +85,13 @@ async fn backup(ctx: Context) -> Result<(), Error> {
                 CreateAttachment::file(
                     &File::open(DATA_FILE).await?,
                     format!("{}.json", Local::now().timestamp()),
-                ).await?,
+                )
+                .await?,
             ],
-            CreateMessage::default().embed(
-                CreateEmbed::default()
-                    .title(format!("データのバックアップ ({})", format_datetime(Local::now()))),
-            ),
+            CreateMessage::default().embed(CreateEmbed::default().title(format!(
+                "データのバックアップ ({})",
+                format_datetime(Local::now())
+            ))),
         )
         .await?;
 

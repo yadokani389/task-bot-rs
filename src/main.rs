@@ -25,7 +25,7 @@ async fn event_handler(
                 *data.tasks.lock().unwrap() = restore.tasks.lock().unwrap().clone();
                 *data.subjects.lock().unwrap() = restore.subjects.lock().unwrap().clone();
                 *data.suggest_times.lock().unwrap() = restore.suggest_times.lock().unwrap().clone();
-                *data.panel_message.lock().unwrap() = restore.panel_message.lock().unwrap().clone();
+                *data.panel_message.lock().unwrap() = *restore.panel_message.lock().unwrap();
                 *data.ping_channel.lock().unwrap() = *restore.ping_channel.lock().unwrap();
                 *data.ping_role.lock().unwrap() = *restore.ping_role.lock().unwrap();
                 *data.log_channel.lock().unwrap() = *restore.log_channel.lock().unwrap();
@@ -40,7 +40,7 @@ async fn event_handler(
         tokio::spawn(periodic::wait(ctx.clone()));
         if let Some(panel_message) = &*data.panel_message.lock().unwrap() {
             data.panel_listener.lock().unwrap().replace(tokio::spawn(
-                commands::panel::listen_panel_interactions(ctx.clone(), panel_message.clone()),
+                commands::panel::listen_panel_interactions(ctx.clone(), *panel_message),
             ));
         }
     }
