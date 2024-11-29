@@ -59,10 +59,35 @@ impl Category {
     ];
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Subject {
-    Value(String),
-    Other,
+    Set(String),
+    Unset,
+}
+
+impl Serialize for Subject {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        match self {
+            Subject::Set(s) => serializer.serialize_str(s),
+            Subject::Unset => serializer.serialize_none(),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Subject {
+    fn deserialize<D>(deserializer: D) -> Result<Subject, D::Error>
+    where
+        D: serde::de::Deserializer<'de>,
+    {
+        let s = Option::<String>::deserialize(deserializer)?;
+        Ok(match s {
+            Some(s) => Subject::Set(s),
+            None => Subject::Unset,
+        })
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -80,8 +105,8 @@ impl Task {
                 "【{}】{}{}",
                 String::from(self.category),
                 match &self.subject {
-                    Subject::Value(s) => format!("{} ", s),
-                    Subject::Other => "".to_string(),
+                    Subject::Set(s) => format!("{} ", s),
+                    Subject::Unset => "".to_string(),
                 },
                 self.details
             ),
@@ -145,7 +170,7 @@ pub struct Data {
     pub tasks: Mutex<BTreeSet<Task>>,
     pub subjects: Mutex<BTreeSet<String>>,
     pub suggest_times: Mutex<BTreeMap<NaiveTime, String>>,
-    pub panel_message: Mutex<Option<Message>>,
+    pub panel_message: Mutex<Option<(MessageId, ChannelId)>>,
     pub ping_channel: Mutex<Option<ChannelId>>,
     pub ping_role: Mutex<Option<RoleId>>,
     pub log_channel: Mutex<Option<ChannelId>>,

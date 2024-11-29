@@ -42,16 +42,16 @@ pub async fn create_task(
                 .map(|s| {
                     CreateSelectMenuOption::new(
                         s,
-                        serde_json::to_string(&Subject::Value(s.to_string())).unwrap(),
+                        serde_json::to_string(&Subject::Set(s.to_string())).unwrap(),
                     )
-                    .default_selection(task.subject == Some(Subject::Value(s.to_string())))
+                    .default_selection(task.subject == Some(Subject::Set(s.to_string())))
                 })
                 .chain(iter::once(
                     CreateSelectMenuOption::new(
                         "(教科を指定しない)",
-                        serde_json::to_string(&Subject::Other).unwrap(),
+                        serde_json::to_string(&Subject::Unset).unwrap(),
                     )
-                    .default_selection(task.subject == Some(Subject::Other)),
+                    .default_selection(task.subject == Some(Subject::Unset)),
                 ))
                 .collect(),
         };

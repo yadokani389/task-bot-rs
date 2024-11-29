@@ -36,11 +36,13 @@ pub async fn deploy_panel(ctx: PoiseContext<'_>) -> Result<(), Error> {
                 ])]),
         )
         .await?;
+
+    let id_pair = (message.id, message.channel_id);
     ctx.data()
         .panel_message
         .lock()
         .unwrap()
-        .replace(message.clone());
+        .replace(id_pair);
     save(ctx.data())?;
     ctx.data()
         .panel_listener
@@ -54,7 +56,7 @@ pub async fn deploy_panel(ctx: PoiseContext<'_>) -> Result<(), Error> {
         .unwrap()
         .replace(tokio::spawn(listen_panel_interactions(
             ctx.serenity_context().clone(),
-            message,
+            id_pair,
         )));
     ctx.send(
         poise::CreateReply::default()
@@ -69,8 +71,11 @@ pub async fn deploy_panel(ctx: PoiseContext<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-pub async fn listen_panel_interactions(ctx: Context, msg: Message) -> Result<(), Error> {
-    let mut interaction_stream = msg.await_component_interaction(&ctx).stream();
+pub async fn listen_panel_interactions(ctx: Context, id_pair: (MessageId, ChannelId)) -> Result<(), Error> {
+    let (message_id, channel_id) = id_pair;
+    let message = channel_id.message(&ctx, message_id).await?;
+
+    let mut interaction_stream = message.await_component_interaction(&ctx).stream();
     while let Some(interaction) = interaction_stream.next().await {
         match interaction.data.custom_id.as_str() {
             SHOW_TASKS => {
