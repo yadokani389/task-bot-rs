@@ -2,9 +2,12 @@ use anyhow::{Context as _, Error, Ok};
 use chrono::{Duration, Local, NaiveTime};
 use itertools::Itertools;
 use poise::serenity_prelude::*;
-use tokio::time::{sleep_until, Instant};
+use tokio::{
+    fs::File,
+    time::{sleep_until, Instant},
+};
 
-use crate::load;
+use crate::{load, utils::format_datetime, DATA_FILE};
 
 pub async fn wait(ctx: Context) {
     loop {
@@ -19,14 +22,15 @@ pub async fn wait(ctx: Context) {
                 time
             }
         };
-        let sleep_duration = Duration::seconds(target_time.timestamp() - now.timestamp());
+        let sleep_duration = target_time - now;
 
         println!("Now: {}", now);
         println!("Next run: {}", target_time);
         println!("Sleeping for {} seconds", sleep_duration.num_seconds());
 
         sleep_until(Instant::now() + sleep_duration.to_std().unwrap()).await;
-        notify(ctx.clone()).await.expect("Failed to run daily job");
+        notify(ctx.clone()).await.expect("Failed to notify");
+        backup(ctx.clone()).await.expect("Failed to backup");
     }
 }
 
@@ -67,5 +71,28 @@ async fn notify(ctx: Context) -> Result<(), Error> {
             )
             .await?;
     }
+    Ok(())
+}
+
+async fn backup(ctx: Context) -> Result<(), Error> {
+    let data = load()?;
+    let log_channel = (*data.log_channel.lock().unwrap()).context("Log channel not set")?;
+
+    log_channel
+        .send_files(
+            ctx,
+            vec![
+                CreateAttachment::file(
+                    &File::open(DATA_FILE).await?,
+                    format!("{}.json", Local::now().timestamp()),
+                ).await?,
+            ],
+            CreateMessage::default().embed(
+                CreateEmbed::default()
+                    .title(format!("データのバックアップ ({})", format_datetime(Local::now()))),
+            ),
+        )
+        .await?;
+
     Ok(())
 }
