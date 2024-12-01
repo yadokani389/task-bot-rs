@@ -1,4 +1,4 @@
-use anyhow::{Context as _, Error};
+use anyhow::Error;
 use poise::serenity_prelude::*;
 
 use crate::{
@@ -10,7 +10,7 @@ use crate::{
 #[poise::command(slash_command)]
 /// タスクを追加します。
 pub async fn add_task(ctx: PoiseContext<'_>) -> Result<(), Error> {
-    let (mut message, task) = create_task(
+    let (last_interaction, task) = create_task(
         ctx,
         None,
         CreateEmbed::default()
@@ -23,18 +23,18 @@ pub async fn add_task(ctx: PoiseContext<'_>) -> Result<(), Error> {
     ctx.data().tasks.lock().unwrap().insert(task.clone());
     data::save(ctx.data())?;
 
-    message
-        .edit(
-            ctx,
-            EditMessage::default()
-                .embed(
-                    CreateEmbed::default()
-                        .title("タスクを追加しました")
-                        .fields(vec![task.to_field()])
-                        .color(Color::DARK_GREEN),
-                )
-                .components(vec![]),
-        )
+    let response = CreateInteractionResponse::UpdateMessage(
+        CreateInteractionResponseMessage::default()
+            .embed(
+                CreateEmbed::default()
+                    .title("タスクを追加しました")
+                    .fields(vec![task.to_field()])
+                    .color(Color::DARK_GREEN),
+            )
+            .components(vec![]),
+    );
+    last_interaction
+        .create_response(ctx, response)
         .await?;
 
     Ok(())
@@ -45,6 +45,7 @@ pub async fn add_task(ctx: PoiseContext<'_>) -> Result<(), Error> {
 pub async fn remove_task(ctx: PoiseContext<'_>) -> Result<(), Error> {
     let (last_interaction, task) = select_task(
         ctx,
+        None,
         CreateEmbed::default()
             .title("削除するタスクを選択")
             .color(Color::DARK_BLUE),
@@ -68,7 +69,6 @@ pub async fn remove_task(ctx: PoiseContext<'_>) -> Result<(), Error> {
             .components(vec![]),
     );
     last_interaction
-        .context("No interaction")?
         .create_response(ctx, response)
         .await?;
 
@@ -80,15 +80,16 @@ pub async fn remove_task(ctx: PoiseContext<'_>) -> Result<(), Error> {
 pub async fn edit_task(ctx: PoiseContext<'_>) -> Result<(), Error> {
     let (last_interaction, task) = select_task(
         ctx,
+        None,
         CreateEmbed::default()
             .title("編集するタスクを選択")
             .color(Color::DARK_BLUE),
     )
     .await?;
 
-    let (mut message, modified_task) = create_task(
+    let (last_interaction, modified_task) = create_task(
         ctx,
-        Some(last_interaction.context("No interaction")?),
+        Some(last_interaction),
         CreateEmbed::default()
             .title("タスクを編集します".to_string())
             .color(Color::DARK_BLUE),
@@ -103,22 +104,22 @@ pub async fn edit_task(ctx: PoiseContext<'_>) -> Result<(), Error> {
     }
     data::save(ctx.data())?;
 
-    message
-        .edit(
-            ctx,
-            EditMessage::default()
-                .embed(
-                    CreateEmbed::default()
-                        .title("タスクを編集しました")
-                        .fields(vec![
-                            task.to_field(),
-                            ("↓".into(), "".into(), false),
-                            modified_task.to_field(),
-                        ])
-                        .color(Color::DARK_GREEN),
-                )
-                .components(vec![]),
-        )
+    let response = CreateInteractionResponse::UpdateMessage(
+        CreateInteractionResponseMessage::default()
+            .embed(
+                CreateEmbed::default()
+                    .title("タスクを編集しました")
+                    .fields(vec![
+                        task.to_field(),
+                        ("↓".into(), "".into(), false),
+                        modified_task.to_field(),
+                    ])
+                    .color(Color::DARK_GREEN),
+            )
+            .components(vec![]),
+    );
+    last_interaction
+        .create_response(ctx, response)
         .await?;
 
     Ok(())

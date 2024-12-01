@@ -1,5 +1,8 @@
 use std::{
-    collections::{BTreeMap, BTreeSet}, fmt::Display, fs, sync::Mutex
+    collections::{BTreeMap, BTreeSet},
+    fmt::Display,
+    fs,
+    sync::Mutex,
 };
 
 use anyhow::{Context, Error};
@@ -125,7 +128,7 @@ pub struct PartialTask {
 }
 
 impl PartialTask {
-    pub fn to_task(&self) -> Result<Task, Error> {
+    pub fn unpartial(&self) -> Result<Task, Error> {
         let category = self.category.context("Category not selected")?;
         let subject = self.subject.clone().context("Subject not selected")?;
         let details = self.details.clone().context("Details not selected")?;

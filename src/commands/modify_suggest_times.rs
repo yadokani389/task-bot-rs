@@ -62,7 +62,6 @@ pub async fn add_suggest_time(
     );
 
     interaction
-        .context("No interaction")?
         .create_response(ctx, response)
         .await?;
 

@@ -4,7 +4,6 @@ use anyhow::{Context as _, Error};
 use chrono::{Duration, Local, NaiveDate, NaiveTime};
 use futures::StreamExt;
 use poise::serenity_prelude::*;
-use poise::Modal;
 
 use crate::{
     interactions::{select_date, select_time},
@@ -17,7 +16,7 @@ pub async fn create_task(
     interaction: Option<ComponentInteraction>,
     embed: CreateEmbed,
     defaults: PartialTask,
-) -> Result<(Message, Task), Error> {
+) -> Result<(ModalInteraction, Task), Error> {
     const CATEGORY: &str = "category";
     const SUBJECT: &str = "subject";
     const DATE: &str = "date";
@@ -185,11 +184,10 @@ pub async fn create_task(
         None => {
             let (interaction, date) = select_date(
                 ctx,
-                message.clone(),
-                last_interaction.clone().context("No interaction")?,
+                Some(last_interaction.clone().context("No interaction")?),
             )
             .await?;
-            last_interaction.replace(interaction.context("No interaction")?);
+            last_interaction.replace(interaction);
             Some(date)
         }
     };
@@ -203,33 +201,30 @@ pub async fn create_task(
                 None,
             )
             .await?;
-            last_interaction.replace(interaction.context("No interaction")?);
+            last_interaction.replace(interaction);
             Some(time)
         }
     };
 
-    #[derive(Modal)]
-    #[name = "詳細入力"]
-    struct DetailsModal {
-        #[name = "詳細を入力してください"]
-        #[placeholder = "詳細"]
-        details: String,
-    }
+    let response = last_interaction
+        .clone()
+        .context("No interaction")?
+        .quick_modal(
+            ctx.serenity_context(),
+            CreateQuickModal::new("詳細入力")
+                .short_field("詳細")
+                .timeout(Duration::seconds(60 * 30).to_std()?),
+        )
+        .await?;
 
-    let DetailsModal { details } = poise::execute_modal_on_component_interaction::<DetailsModal>(
-        ctx,
-        last_interaction.context("No interaction")?,
-        defaults
-            .clone()
-            .details
-            .map(|x| DetailsModal { details: x }),
-        Some(Duration::seconds(60 * 30).to_std()?),
-    )
-    .await?
-    .context("No interaction")?;
-    task.details.replace(details);
+    let QuickModalResponse {
+        inputs,
+        interaction,
+    } = response.context("No response")?;
 
-    let task = task.to_task()?;
+    task.details = Some(inputs[0].clone());
 
-    Ok((message, task))
+    let task = task.unpartial()?;
+
+    Ok((interaction, task))
 }

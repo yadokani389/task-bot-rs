@@ -11,7 +11,7 @@ pub async fn select_time(
     ctx: PoiseContext<'_>,
     interaction: Option<ComponentInteraction>,
     embed: Option<CreateEmbed>,
-) -> Result<(Option<ComponentInteraction>, NaiveTime), Error> {
+) -> Result<(ComponentInteraction, NaiveTime), Error> {
     const HOUR: &str = "hour";
     const MINUTE: &str = "minute";
     const SUBMIT: &str = "submit";
@@ -113,7 +113,7 @@ pub async fn select_time(
     }
 
     Ok((
-        last_interaction,
+        last_interaction.context("No interaction")?,
         NaiveTime::from_hms_opt(
             hour.context("Hour not selected")?,
             minute.context("Minute not selected")?,

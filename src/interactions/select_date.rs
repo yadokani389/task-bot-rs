@@ -28,9 +28,8 @@ impl From<MonthHalf> for String {
 
 pub async fn select_date(
     ctx: PoiseContext<'_>,
-    message: Message,
-    interaction: ComponentInteraction,
-) -> Result<(Option<ComponentInteraction>, NaiveDate), Error> {
+    interaction: Option<ComponentInteraction>,
+) -> Result<(ComponentInteraction, NaiveDate), Error> {
     const YEAR: &str = "year";
     const MONTH: &str = "month";
     const DAY: &str = "day";
@@ -98,10 +97,25 @@ pub async fn select_date(
         ])
     };
 
-    let response = CreateInteractionResponse::UpdateMessage(
-        CreateInteractionResponseMessage::default().components(components(date)?),
-    );
-    interaction.create_response(ctx, response).await?;
+    let message = match interaction {
+        Some(interaction) => {
+            let response = CreateInteractionResponse::UpdateMessage(
+                CreateInteractionResponseMessage::default().components(components(date)?),
+            );
+            interaction.create_response(ctx, response).await?;
+            interaction.get_response(ctx).await?
+        }
+        None => {
+            ctx.send(
+                poise::CreateReply::default()
+                    .content("日付を選択してください")
+                    .components(components(date)?),
+            )
+            .await?
+            .into_message()
+            .await?
+        }
+    };
 
     let mut interaction_stream = message
         .await_component_interaction(ctx)
@@ -169,5 +183,5 @@ pub async fn select_date(
         }
     }
 
-    Ok((last_interaction, date))
+    Ok((last_interaction.context("No interaction")?, date))
 }

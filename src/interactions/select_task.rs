@@ -8,8 +8,9 @@ use crate::{utils::format_datetime, PoiseContext, Task};
 
 pub async fn select_task(
     ctx: PoiseContext<'_>,
+    interaction: Option<ComponentInteraction>,
     embed: CreateEmbed,
-) -> Result<(Option<ComponentInteraction>, Task), Error> {
+) -> Result<(ComponentInteraction, Task), Error> {
     const TASK: &str = "task";
     const SUBMIT: &str = "submit";
     const PREV: &str = "prev";
@@ -58,18 +59,33 @@ pub async fn select_task(
         ]
     };
 
-    let message = ctx
-        .send(
-            poise::CreateReply::default()
-                .embed(embed)
-                .components(components(page, &None)),
-        )
-        .await?;
+    let message = match interaction {
+        Some(interaction) => {
+            interaction
+                .create_response(
+                    ctx,
+                    CreateInteractionResponse::UpdateMessage(
+                        CreateInteractionResponseMessage::default()
+                            .embed(embed)
+                            .components(components(page, &None)),
+                    ),
+                )
+                .await?;
+            interaction.get_response(ctx).await?
+        }
+        None => {
+            ctx.send(
+                poise::CreateReply::default()
+                    .embed(embed)
+                    .components(components(page, &None)),
+            )
+            .await?
+            .into_message()
+            .await?
+        }
+    };
 
     let mut interaction_stream = message
-        .clone()
-        .into_message()
-        .await?
         .await_component_interaction(ctx)
         .timeout(Duration::seconds(60 * 30).to_std()?)
         .stream();
@@ -122,5 +138,8 @@ pub async fn select_task(
         }
     }
 
-    Ok((last_interaction, task.context("Task not selected")?))
+    Ok((
+        last_interaction.context("No interaction")?,
+        task.context("Task not selected")?,
+    ))
 }
