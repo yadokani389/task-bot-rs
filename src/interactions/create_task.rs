@@ -14,7 +14,7 @@ use crate::{
 pub async fn create_task(
     ctx: PoiseContext<'_>,
     interaction: Option<ComponentInteraction>,
-    embed: CreateEmbed,
+    embed: Option<CreateEmbed>,
     defaults: PartialTask,
 ) -> Result<(ModalInteraction, Task), Error> {
     const CATEGORY: &str = "category";
@@ -120,17 +120,23 @@ pub async fn create_task(
 
     let message = if let Some(interaction) = interaction {
         let response = CreateInteractionResponse::UpdateMessage(
-            CreateInteractionResponseMessage::default()
-                .embed(embed)
-                .components(components(&defaults)),
+            if let Some(embed) = embed {
+                CreateInteractionResponseMessage::default().embed(embed)
+            } else {
+                CreateInteractionResponseMessage::default()
+            }
+            .components(components(&defaults)),
         );
         interaction.create_response(ctx, response).await?;
         interaction.get_response(ctx).await?
     } else {
         ctx.send(
-            poise::CreateReply::default()
-                .embed(embed)
-                .components(components(&defaults)),
+            if let Some(embed) = embed {
+                poise::CreateReply::default().embed(embed)
+            } else {
+                poise::CreateReply::default()
+            }
+            .components(components(&defaults)),
         )
         .await?
         .into_message()
@@ -185,6 +191,7 @@ pub async fn create_task(
             let (interaction, date) = select_date(
                 ctx,
                 Some(last_interaction.clone().context("No interaction")?),
+                None,
             )
             .await?;
             last_interaction.replace(interaction);
@@ -206,15 +213,18 @@ pub async fn create_task(
         }
     };
 
+    let modal = CreateQuickModal::new("詳細入力")
+        .field(
+            CreateInputText::new(InputTextStyle::Short, "詳細", "")
+                .value(task.details.unwrap_or("".into()))
+                .placeholder("詳細を入力してください"),
+        )
+        .timeout(Duration::seconds(60 * 30).to_std()?);
+
     let response = last_interaction
         .clone()
         .context("No interaction")?
-        .quick_modal(
-            ctx.serenity_context(),
-            CreateQuickModal::new("詳細入力")
-                .short_field("詳細")
-                .timeout(Duration::seconds(60 * 30).to_std()?),
-        )
+        .quick_modal(ctx.serenity_context(), modal)
         .await?;
 
     let QuickModalResponse {

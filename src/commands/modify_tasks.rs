@@ -13,9 +13,11 @@ pub async fn add_task(ctx: PoiseContext<'_>) -> Result<(), Error> {
     let (last_interaction, task) = create_task(
         ctx,
         None,
-        CreateEmbed::default()
-            .title("タスクを追加します".to_string())
-            .color(Color::DARK_BLUE),
+        Some(
+            CreateEmbed::default()
+                .title("タスクを追加します".to_string())
+                .color(Color::DARK_BLUE),
+        ),
         PartialTask::default(),
     )
     .await?;
@@ -33,9 +35,7 @@ pub async fn add_task(ctx: PoiseContext<'_>) -> Result<(), Error> {
             )
             .components(vec![]),
     );
-    last_interaction
-        .create_response(ctx, response)
-        .await?;
+    last_interaction.create_response(ctx, response).await?;
 
     Ok(())
 }
@@ -46,9 +46,11 @@ pub async fn remove_task(ctx: PoiseContext<'_>) -> Result<(), Error> {
     let (last_interaction, task) = select_task(
         ctx,
         None,
-        CreateEmbed::default()
-            .title("削除するタスクを選択")
-            .color(Color::DARK_BLUE),
+        Some(
+            CreateEmbed::default()
+                .title("削除するタスクを選択")
+                .color(Color::DARK_BLUE),
+        ),
     )
     .await?;
 
@@ -68,9 +70,7 @@ pub async fn remove_task(ctx: PoiseContext<'_>) -> Result<(), Error> {
             )
             .components(vec![]),
     );
-    last_interaction
-        .create_response(ctx, response)
-        .await?;
+    last_interaction.create_response(ctx, response).await?;
 
     Ok(())
 }
@@ -81,18 +81,22 @@ pub async fn edit_task(ctx: PoiseContext<'_>) -> Result<(), Error> {
     let (last_interaction, task) = select_task(
         ctx,
         None,
-        CreateEmbed::default()
-            .title("編集するタスクを選択")
-            .color(Color::DARK_BLUE),
+        Some(
+            CreateEmbed::default()
+                .title("編集するタスクを選択")
+                .color(Color::DARK_BLUE),
+        ),
     )
     .await?;
 
     let (last_interaction, modified_task) = create_task(
         ctx,
         Some(last_interaction),
-        CreateEmbed::default()
-            .title("タスクを編集します".to_string())
-            .color(Color::DARK_BLUE),
+        Some(
+            CreateEmbed::default()
+                .title("タスクを編集します".to_string())
+                .color(Color::DARK_BLUE),
+        ),
         task.as_partial(),
     )
     .await?;
@@ -118,9 +122,7 @@ pub async fn edit_task(ctx: PoiseContext<'_>) -> Result<(), Error> {
             )
             .components(vec![]),
     );
-    last_interaction
-        .create_response(ctx, response)
-        .await?;
+    last_interaction.create_response(ctx, response).await?;
 
     Ok(())
 }

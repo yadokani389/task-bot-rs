@@ -61,9 +61,7 @@ pub async fn add_suggest_time(
             .components(vec![]),
     );
 
-    interaction
-        .create_response(ctx, response)
-        .await?;
+    interaction.create_response(ctx, response).await?;
 
     Ok(())
 }

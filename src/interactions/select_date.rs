@@ -29,6 +29,7 @@ impl From<MonthHalf> for String {
 pub async fn select_date(
     ctx: PoiseContext<'_>,
     interaction: Option<ComponentInteraction>,
+    embed: Option<CreateEmbed>,
 ) -> Result<(ComponentInteraction, NaiveDate), Error> {
     const YEAR: &str = "year";
     const MONTH: &str = "month";
@@ -97,24 +98,29 @@ pub async fn select_date(
         ])
     };
 
-    let message = match interaction {
-        Some(interaction) => {
-            let response = CreateInteractionResponse::UpdateMessage(
-                CreateInteractionResponseMessage::default().components(components(date)?),
-            );
-            interaction.create_response(ctx, response).await?;
-            interaction.get_response(ctx).await?
-        }
-        None => {
-            ctx.send(
+    let message = if let Some(interaction) = interaction {
+        let response = CreateInteractionResponse::UpdateMessage(
+            if let Some(embed) = embed {
+                CreateInteractionResponseMessage::default().embed(embed)
+            } else {
+                CreateInteractionResponseMessage::default()
+            }
+            .components(components(date)?),
+        );
+        interaction.create_response(ctx, response).await?;
+        interaction.get_response(ctx).await?
+    } else {
+        ctx.send(
+            if let Some(embed) = embed {
+                poise::CreateReply::default().embed(embed)
+            } else {
                 poise::CreateReply::default()
-                    .content("日付を選択してください")
-                    .components(components(date)?),
-            )
-            .await?
-            .into_message()
-            .await?
-        }
+            }
+            .components(components(date)?),
+        )
+        .await?
+        .into_message()
+        .await?
     };
 
     let mut interaction_stream = message

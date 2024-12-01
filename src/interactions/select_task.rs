@@ -9,7 +9,7 @@ use crate::{utils::format_datetime, PoiseContext, Task};
 pub async fn select_task(
     ctx: PoiseContext<'_>,
     interaction: Option<ComponentInteraction>,
-    embed: CreateEmbed,
+    embed: Option<CreateEmbed>,
 ) -> Result<(ComponentInteraction, Task), Error> {
     const TASK: &str = "task";
     const SUBMIT: &str = "submit";
@@ -59,30 +59,33 @@ pub async fn select_task(
         ]
     };
 
-    let message = match interaction {
-        Some(interaction) => {
-            interaction
-                .create_response(
-                    ctx,
-                    CreateInteractionResponse::UpdateMessage(
+    let message = if let Some(interaction) = interaction {
+        interaction
+            .create_response(
+                ctx,
+                CreateInteractionResponse::UpdateMessage(
+                    if let Some(embed) = embed {
+                        CreateInteractionResponseMessage::default().embed(embed)
+                    } else {
                         CreateInteractionResponseMessage::default()
-                            .embed(embed)
-                            .components(components(page, &None)),
-                    ),
-                )
-                .await?;
-            interaction.get_response(ctx).await?
-        }
-        None => {
-            ctx.send(
-                poise::CreateReply::default()
-                    .embed(embed)
+                    }
                     .components(components(page, &None)),
+                ),
             )
-            .await?
-            .into_message()
-            .await?
-        }
+            .await?;
+        interaction.get_response(ctx).await?
+    } else {
+        ctx.send(
+            if let Some(embed) = embed {
+                poise::CreateReply::default().embed(embed)
+            } else {
+                poise::CreateReply::default()
+            }
+            .components(components(page, &None)),
+        )
+        .await?
+        .into_message()
+        .await?
     };
 
     let mut interaction_stream = message
