@@ -52,7 +52,7 @@ pub async fn add_subjects(
 #[poise::command(slash_command)]
 /// 教科を削除します。
 pub async fn remove_subject(ctx: PoiseContext<'_>) -> Result<(), Error> {
-    const REMOVE_SUBJECT: &str = "remove_subject";
+    const SUBJECT: &str = "subject";
     const SUBMIT: &str = "submit";
 
     let subjects = ctx.data().subjects.lock().unwrap().clone();
@@ -70,7 +70,7 @@ pub async fn remove_subject(ctx: PoiseContext<'_>) -> Result<(), Error> {
 
         vec![
             CreateActionRow::SelectMenu(
-                CreateSelectMenu::new(REMOVE_SUBJECT, subject_options)
+                CreateSelectMenu::new(SUBJECT, subject_options)
                     .placeholder("削除したい教科を選択してください"),
             ),
             CreateActionRow::Buttons(vec![CreateButton::new(SUBMIT)
@@ -105,7 +105,9 @@ pub async fn remove_subject(ctx: PoiseContext<'_>) -> Result<(), Error> {
     while let Some(interaction) = interaction_stream.next().await {
         match &interaction.data.kind {
             ComponentInteractionDataKind::StringSelect { values, .. } => {
-                select.replace(values[0].clone());
+                if interaction.data.custom_id == SUBJECT {
+                    select.replace(values[0].clone());
+                }
                 let response = CreateInteractionResponse::UpdateMessage(
                     CreateInteractionResponseMessage::default()
                         .components(components(select.clone())),

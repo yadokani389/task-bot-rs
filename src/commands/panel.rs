@@ -8,8 +8,8 @@ use {futures::StreamExt, Mentionable};
 
 use crate::{data, PoiseContext};
 
-const SHOW_TASKS: &str = "show_tasks";
-const SHOW_ARCHIVED_TASKS: &str = "show_archived_tasks";
+const TASKS: &str = "tasks";
+const ARCHIVED_TASKS: &str = "archived_tasks";
 const TASKS_PER_PAGE: usize = 7;
 
 #[poise::command(slash_command)]
@@ -27,10 +27,10 @@ pub async fn deploy_panel(ctx: PoiseContext<'_>) -> Result<(), Error> {
                         .color(Color::BLUE),
                 )
                 .components(vec![CreateActionRow::Buttons(vec![
-                    CreateButton::new(SHOW_TASKS)
+                    CreateButton::new(TASKS)
                         .label("タスク一覧")
                         .style(ButtonStyle::Success),
-                    CreateButton::new(SHOW_ARCHIVED_TASKS)
+                    CreateButton::new(ARCHIVED_TASKS)
                         .label("過去のタスク一覧")
                         .style(ButtonStyle::Secondary),
                 ])]),
@@ -81,10 +81,10 @@ pub async fn listen_panel_interactions(
     let mut interaction_stream = message.await_component_interaction(&ctx).stream();
     while let Some(interaction) = interaction_stream.next().await {
         match interaction.data.custom_id.as_str() {
-            SHOW_TASKS => {
+            TASKS => {
                 tokio::spawn(show_tasks(interaction.clone(), ctx.clone()));
             }
-            SHOW_ARCHIVED_TASKS => {
+            ARCHIVED_TASKS => {
                 tokio::spawn(show_archived_tasks(interaction.clone(), ctx.clone()));
             }
             _ => {}

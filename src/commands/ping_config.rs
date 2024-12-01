@@ -32,14 +32,14 @@ pub async fn set_ping_channel(ctx: PoiseContext<'_>) -> Result<(), Error> {
 #[poise::command(slash_command)]
 /// タスク通知を送るロールを設定します。
 pub async fn set_ping_role(ctx: PoiseContext<'_>) -> Result<(), Error> {
-    const SET_PING_ROLE: &str = "set_ping_role";
+    const ROLE: &str = "role";
     const SUBMIT: &str = "submit";
 
     let components = |role: Option<RoleId>| {
         vec![
             CreateActionRow::SelectMenu(
                 CreateSelectMenu::new(
-                    SET_PING_ROLE,
+                    ROLE,
                     CreateSelectMenuKind::Role {
                         default_roles: role.map(|r| vec![r]),
                     },
@@ -79,7 +79,9 @@ pub async fn set_ping_role(ctx: PoiseContext<'_>) -> Result<(), Error> {
     while let Some(interaction) = interaction_stream.next().await {
         match &interaction.data.kind {
             ComponentInteractionDataKind::RoleSelect { values } => {
-                select.replace(values[0]);
+                if interaction.data.custom_id == ROLE {
+                    select.replace(values[0]);
+                }
                 let response = CreateInteractionResponse::UpdateMessage(
                     CreateInteractionResponseMessage::default().components(components(select)),
                 );
