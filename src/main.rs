@@ -7,7 +7,7 @@ mod commands;
 mod data;
 mod interactions;
 mod periodic;
-mod utils;
+mod utilities;
 
 pub type PoiseContext<'a> = poise::Context<'a, Data, Error>;
 

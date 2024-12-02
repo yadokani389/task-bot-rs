@@ -7,7 +7,7 @@ use tokio::{
     time::{sleep_until, Instant},
 };
 
-use crate::{data, utils::format_datetime};
+use crate::{data, utilities::format_datetime};
 
 pub async fn wait(ctx: Context) {
     loop {

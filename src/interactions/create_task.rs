@@ -7,7 +7,7 @@ use poise::serenity_prelude::*;
 
 use crate::{
     interactions::{select_date, select_time},
-    utils::format_date,
+    utilities::format_date,
     Category, PartialTask, PoiseContext, Subject, Task,
 };
 

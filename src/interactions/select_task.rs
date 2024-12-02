@@ -4,7 +4,7 @@ use futures::StreamExt;
 use itertools::Itertools;
 use poise::serenity_prelude::*;
 
-use crate::{utils::format_datetime, PoiseContext, Task};
+use crate::{utilities::format_datetime, PoiseContext, Task};
 
 pub async fn select_task(
     ctx: PoiseContext<'_>,
