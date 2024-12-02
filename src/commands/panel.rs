@@ -123,9 +123,10 @@ async fn show_tasks(interaction: ComponentInteraction, ctx: Context) -> Result<(
     const PREV: &str = "prev";
     const NEXT: &str = "next";
 
+    let tasks = data::load()?.tasks.lock().unwrap().clone();
+
     let mut page = 0;
-    let message = |page: usize| -> Result<_, Error> {
-        let tasks = data::load()?.tasks.lock().unwrap().clone();
+    let message = |page: usize| {
         let fields = tasks
             .iter()
             .filter(|e| Local::now().date_naive() <= e.datetime.date_naive())
@@ -133,7 +134,7 @@ async fn show_tasks(interaction: ComponentInteraction, ctx: Context) -> Result<(
             .map(|task| task.to_field())
             .skip(TASKS_PER_PAGE * page);
 
-        Ok(CreateInteractionResponseMessage::new()
+        CreateInteractionResponseMessage::new()
             .embed(
                 CreateEmbed::default()
                     .title("タスク一覧")
@@ -155,11 +156,11 @@ async fn show_tasks(interaction: ComponentInteraction, ctx: Context) -> Result<(
                     .style(ButtonStyle::Secondary)
                     .disabled(fields.len() <= TASKS_PER_PAGE),
             ])])
-            .ephemeral(true))
+            .ephemeral(true)
     };
 
     interaction
-        .create_response(&ctx, CreateInteractionResponse::Message(message(page)?))
+        .create_response(&ctx, CreateInteractionResponse::Message(message(page)))
         .await?;
 
     log(
@@ -186,7 +187,7 @@ async fn show_tasks(interaction: ComponentInteraction, ctx: Context) -> Result<(
                 interaction
                     .create_response(
                         &ctx,
-                        CreateInteractionResponse::UpdateMessage(message(page)?),
+                        CreateInteractionResponse::UpdateMessage(message(page)),
                     )
                     .await?;
             }
@@ -195,7 +196,7 @@ async fn show_tasks(interaction: ComponentInteraction, ctx: Context) -> Result<(
                 interaction
                     .create_response(
                         &ctx,
-                        CreateInteractionResponse::UpdateMessage(message(page)?),
+                        CreateInteractionResponse::UpdateMessage(message(page)),
                     )
                     .await?;
             }
@@ -210,9 +211,10 @@ async fn show_archived_tasks(interaction: ComponentInteraction, ctx: Context) ->
     const PREV: &str = "prev";
     const NEXT: &str = "next";
 
+    let tasks = data::load()?.tasks.lock().unwrap().clone();
+
     let mut page = 0;
-    let message = |page: usize| -> Result<_, Error> {
-        let tasks = data::load()?.tasks.lock().unwrap().clone();
+    let message = |page: usize| {
         let fields = tasks
             .iter()
             .filter(|e| Local::now() > e.datetime)
@@ -221,7 +223,7 @@ async fn show_archived_tasks(interaction: ComponentInteraction, ctx: Context) ->
             .map(|task| task.to_field())
             .skip(TASKS_PER_PAGE * page);
 
-        Ok(CreateInteractionResponseMessage::new()
+        CreateInteractionResponseMessage::new()
             .embed(
                 CreateEmbed::default()
                     .title("過去のタスク一覧")
@@ -243,11 +245,11 @@ async fn show_archived_tasks(interaction: ComponentInteraction, ctx: Context) ->
                     .style(ButtonStyle::Secondary)
                     .disabled(fields.len() <= TASKS_PER_PAGE),
             ])])
-            .ephemeral(true))
+            .ephemeral(true)
     };
 
     interaction
-        .create_response(&ctx, CreateInteractionResponse::Message(message(page)?))
+        .create_response(&ctx, CreateInteractionResponse::Message(message(page)))
         .await?;
 
     log(
@@ -274,7 +276,7 @@ async fn show_archived_tasks(interaction: ComponentInteraction, ctx: Context) ->
                 interaction
                     .create_response(
                         &ctx,
-                        CreateInteractionResponse::UpdateMessage(message(page)?),
+                        CreateInteractionResponse::UpdateMessage(message(page)),
                     )
                     .await?;
             }
@@ -283,7 +285,7 @@ async fn show_archived_tasks(interaction: ComponentInteraction, ctx: Context) ->
                 interaction
                     .create_response(
                         &ctx,
-                        CreateInteractionResponse::UpdateMessage(message(page)?),
+                        CreateInteractionResponse::UpdateMessage(message(page)),
                     )
                     .await?;
             }

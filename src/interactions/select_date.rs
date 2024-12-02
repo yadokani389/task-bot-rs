@@ -39,7 +39,7 @@ pub async fn select_date(
     let mut last_interaction = None;
     let mut date = Local::now().date_naive();
 
-    let components = |date: NaiveDate| -> Result<_, Error> {
+    let components = |date: NaiveDate| {
         let month = date.month();
         let is_first_half = date.day() <= 15;
 
@@ -75,7 +75,7 @@ pub async fn select_date(
             options: if is_first_half {
                 1..=15
             } else {
-                16..=days_in_month(date.year(), month)?
+                16..=days_in_month(date.year(), month).unwrap()
             }
             .map(|i| {
                 CreateSelectMenuOption::new(i.to_string(), i.to_string())
@@ -84,7 +84,7 @@ pub async fn select_date(
             .collect(),
         };
 
-        Ok(vec![
+        vec![
             CreateActionRow::SelectMenu(
                 CreateSelectMenu::new(YEAR, year_options).placeholder("年"),
             ),
@@ -95,7 +95,7 @@ pub async fn select_date(
             CreateActionRow::Buttons(vec![CreateButton::new(SUBMIT)
                 .style(ButtonStyle::Primary)
                 .label("送信")]),
-        ])
+        ]
     };
 
     let message = if let Some(interaction) = interaction {
@@ -105,7 +105,7 @@ pub async fn select_date(
             } else {
                 CreateInteractionResponseMessage::default()
             }
-            .components(components(date)?),
+            .components(components(date)),
         );
         interaction.create_response(ctx, response).await?;
         interaction.get_response(ctx).await?
@@ -116,7 +116,7 @@ pub async fn select_date(
             } else {
                 poise::CreateReply::default()
             }
-            .components(components(date)?),
+            .components(components(date)),
         )
         .await?
         .into_message()
@@ -164,7 +164,7 @@ pub async fn select_date(
 
                         let response = CreateInteractionResponse::UpdateMessage(
                             CreateInteractionResponseMessage::default()
-                                .components(components(date)?),
+                                .components(components(date)),
                         );
                         interaction.create_response(ctx, response).await?;
                     }
