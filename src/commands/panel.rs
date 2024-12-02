@@ -128,7 +128,7 @@ async fn show_tasks(interaction: ComponentInteraction, ctx: Context) -> Result<(
         let tasks = data::load()?.tasks.lock().unwrap().clone();
         let fields = tasks
             .iter()
-            .filter(|e| Local::now() <= e.datetime)
+            .filter(|e| Local::now().date_naive() <= e.datetime.date_naive())
             .sorted_by_key(|e| e.datetime)
             .map(|task| task.to_field())
             .skip(TASKS_PER_PAGE * page);
